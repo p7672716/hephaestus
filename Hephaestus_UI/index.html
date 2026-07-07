@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FAF8F5" />
+    <title>Hephaestus</title>
+    <script>
+      (() => {
+        const saved = localStorage.getItem("hephaestus-theme");
+        const theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+    <link rel="icon" href="assets/hephaestus-icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Mainへ移動</a>
+    <div class="auth-overlay" id="authOverlay" hidden>
+      <form class="auth-dialog" id="authForm">
+        <img src="assets/hephaestus-icon.svg" width="48" height="48" alt="" />
+        <h1>Hephaestus</h1>
+        <label class="auth-field">
+          <span>Access token</span>
+          <input id="authTokenInput" type="password" autocomplete="current-password" />
+        </label>
+        <button class="auth-submit" id="authSubmit" type="submit">Connect</button>
+        <p class="auth-message" id="authMessage"></p>
+      </form>
+    </div>
+
+    <div class="app-shell">
+      <header class="topbar">
+        <button
+          class="sidebar-toggle"
+          id="sidebarToggle"
+          type="button"
+          aria-label="サイドバーを折りたたむ"
+          aria-expanded="true"
+          aria-controls="sidebar"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </button>
+
+        <div class="brand" translate="no">
+          <img
+            class="brand-icon"
+            src="assets/hephaestus-icon.svg"
+            width="40"
+            height="40"
+            alt=""
+            fetchpriority="high"
+          />
+          <span class="brand-name">Hephaestus</span>
+        </div>
+
+        <div class="topbar-actions">
+          <div class="topbar-runtime" aria-label="モデル状態">
+            <span id="runtimeStatus">確認中</span>
+            <strong id="runtimeModel">No resident model</strong>
+            <span id="runtimeReasoning">推論OFF</span>
+            <button class="topbar-runtime-button" id="runtimeStop" type="button" aria-label="モデルをアンロードまたは生成を停止">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h10v10H7z" />
+              </svg>
+            </button>
+            <button class="topbar-runtime-button" id="runtimeResume" type="button" aria-label="モデルをロード">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 5.5v13l10-6.5z" />
+              </svg>
+            </button>
+          </div>
+          <button
+            class="theme-toggle"
+            id="themeToggle"
+            type="button"
+            aria-label="ダークモードに切り替える"
+            aria-pressed="false"
+          >
+            <svg class="theme-icon moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.4 15.3A8.7 8.7 0 0 1 8.7 3.6 8.7 8.7 0 1 0 20.4 15.3z" />
+            </svg>
+            <svg class="theme-icon sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4v1.5" />
+              <path d="M12 18.5V20" />
+              <path d="M4 12h1.5" />
+              <path d="M18.5 12H20" />
+              <path d="M6.3 6.3l1.1 1.1" />
+              <path d="M16.6 16.6l1.1 1.1" />
+              <path d="M17.7 6.3l-1.1 1.1" />
+              <path d="M7.4 16.6l-1.1 1.1" />
+              <path d="M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="body-shell">
+        <aside class="sidebar" id="sidebar" aria-label="メインナビゲーション">
+          <nav class="nav-list">
+            <a class="nav-item active" href="#dashboard" data-label="Dashboard">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4.5 5.5h6v6h-6z" />
+                  <path d="M13.5 5.5h6v6h-6z" />
+                  <path d="M4.5 14h6v4.5h-6z" />
+                  <path d="M13.5 14h6v4.5h-6z" />
+                </svg>
+              </span>
+              <span class="nav-label">Dashboard</span>
+            </a>
+            <a class="nav-item" href="#chat" data-label="Chat">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 6.5c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v7.2c0 1.1-.9 2-2 2h-5.8L6.5 19v-3.3H7c-1.1 0-2-.9-2-2z" />
+                  <path d="M8.5 9.2h7" />
+                  <path d="M8.5 12.2h4.5" />
+                </svg>
+              </span>
+              <span class="nav-label">Chat</span>
+            </a>
+            <a class="nav-item" href="#coding" data-label="Coding">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M9 8l-4 4 4 4" />
+                  <path d="M15 8l4 4-4 4" />
+                  <path d="M13.5 5.5l-3 13" />
+                </svg>
+              </span>
+              <span class="nav-label">Coding</span>
+            </a>
+            <a class="nav-item" href="#notebook" data-label="Notebook">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 4.5h9.5c.8 0 1.5.7 1.5 1.5v12.5c0 .6-.4 1-1 1H7c-1.1 0-2-.9-2-2v-11c0-1.1.9-2 2-2z" />
+                  <path d="M8.5 4.5v15" />
+                  <path d="M11 8h4" />
+                  <path d="M11 11h3" />
+                </svg>
+              </span>
+              <span class="nav-label">Notebook</span>
+            </a>
+            <a class="nav-item" href="#skill" data-label="Skill">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 4.5l6.5 3.7v7.6L12 19.5l-6.5-3.7V8.2z" />
+                  <path d="M12 12l6.2-3.6" />
+                  <path d="M12 12L5.8 8.4" />
+                  <path d="M12 12v7" />
+                </svg>
+              </span>
+              <span class="nav-label">Skill</span>
+            </a>
+            <a class="nav-item" href="#tool" data-label="Tool">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M14.5 5.5l4 4-9 9H5.5v-4z" />
+                  <path d="M13 7l4 4" />
+                  <path d="M5 5.5h5" />
+                  <path d="M5 9h3" />
+                </svg>
+              </span>
+              <span class="nav-label">Tool</span>
+            </a>
+            <a class="nav-item" href="#automation" data-label="Automation">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 7h6a4 4 0 0 1 0 8H9" />
+                  <path d="M9 11l-4 4 4 4" />
+                  <path d="M15 13l4-4-4-4" />
+                </svg>
+              </span>
+              <span class="nav-label">Automation</span>
+            </a>
+            <a class="nav-item" href="#knowledge" data-label="Knowledge">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6.5 6.5h11" />
+                  <path d="M6.5 12h11" />
+                  <path d="M6.5 17.5h11" />
+                  <path d="M4 6.5h.1" />
+                  <path d="M4 12h.1" />
+                  <path d="M4 17.5h.1" />
+                </svg>
+              </span>
+              <span class="nav-label">Knowledge</span>
+            </a>
+            <a class="nav-item" href="#setting" data-label="Setting">
+              <span class="nav-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7z" />
+                  <path d="M18.4 13.4c.1-.5.1-.9 0-1.4l1.7-1.3-1.7-3-2 .8c-.4-.3-.8-.6-1.2-.7L14.9 5h-5.8l-.3 2.8c-.4.2-.8.4-1.2.7l-2-.8-1.7 3L5.6 12c-.1.5-.1.9 0 1.4l-1.7 1.3 1.7 3 2-.8c.4.3.8.6 1.2.7l.3 2.4h5.8l.3-2.4c.4-.2.8-.4 1.2-.7l2 .8 1.7-3z" />
+                </svg>
+              </span>
+              <span class="nav-label">Setting</span>
+            </a>
+          </nav>
+        </aside>
+
+        <main class="main-surface" id="main" tabindex="-1" aria-label="ワークスペース">
+          <section class="dashboard view is-active" id="dashboard" data-view="dashboard" aria-labelledby="dashboardTitle">
+            <div class="dashboard-heading">
+              <h1 id="dashboardTitle">Dashboard</h1>
+            </div>
+
+            <div class="resource-grid" aria-label="現在のPCリソース状態">
+              <article class="metric-card">
+                <div class="metric-topline">
+                  <span>CPU Load</span>
+                  <strong>90%</strong>
+                </div>
+                <div class="meter" aria-hidden="true"><span style="width: 90%"></span></div>
+                <p>12th Gen Intel Core i5-12400</p>
+              </article>
+              <article class="metric-card">
+                <div class="metric-topline">
+                  <span>Memory</span>
+                  <strong>68%</strong>
+                </div>
+                <div class="meter" aria-hidden="true"><span style="width: 68%"></span></div>
+                <p>21.7 GB used / 31.7 GB</p>
+              </article>
+              <article class="metric-card">
+                <div class="metric-topline">
+                  <span>Primary Disk</span>
+                  <strong>53%</strong>
+                </div>
+                <div class="meter" aria-hidden="true"><span style="width: 53%"></span></div>
+                <p>C: 225.8 GB free / 475.9 GB</p>
+              </article>
+            </div>
+
+            <div class="queue-grid" aria-label="モデル状態とタスクキュー">
+              <section class="system-panel model-state-panel">
+                <div class="queue-panel-heading">
+                  <h2>Model Slot</h2>
+                  <span class="status-pill is-busy" id="modelSlotStatus">Busy</span>
+                </div>
+                <dl id="modelSlotDetails"></dl>
+                <div class="model-slot-actions" id="modelSlotActions"></div>
+              </section>
+
+              <section class="system-panel task-queue-panel">
+                <div class="queue-panel-heading">
+                  <h2>Queue</h2>
+                  <span class="queue-count" id="queueCount"></span>
+                </div>
+                <ol class="task-queue" id="taskQueueList"></ol>
+              </section>
+            </div>
+
+            <div class="system-grid" aria-label="PC構成">
+              <section class="system-panel">
+                <h2>Machine</h2>
+                <dl>
+                  <div><dt>Name</dt><dd>DESKTOP-BPR0J2N</dd></div>
+                  <div><dt>OS</dt><dd>Microsoft Windows 11 Home</dd></div>
+                  <div><dt>CPU</dt><dd>6 cores / 12 threads</dd></div>
+                  <div><dt>GPU</dt><dd>NVIDIA GeForce RTX 3060 Ti</dd></div>
+                  <div><dt>GPU Driver</dt><dd>32.0.15.9636</dd></div>
+                </dl>
+              </section>
+              <section class="system-panel">
+                <h2>Storage</h2>
+                <dl>
+                  <div><dt>C:</dt><dd>225.8 GB free / 475.9 GB</dd></div>
+                  <div><dt>D:</dt><dd>209.1 GB free / 931.5 GB</dd></div>
+                  <div><dt>E:</dt><dd>496.0 GB free / 931.5 GB</dd></div>
+                </dl>
+              </section>
+            </div>
+          </section>
+
+          <section class="chat-view view" id="chat" data-view="chat" aria-labelledby="chatTitle" hidden>
+            <header class="view-heading">
+              <h1 id="chatTitle">Chat</h1>
+            </header>
+            <div class="chat-shell">
+              <aside class="session-panel" aria-label="チャットセッション">
+                <div class="session-heading">
+                  <p class="section-kicker">Sessions</p>
+                  <div class="session-heading-actions">
+                    <button class="new-session" id="newChatFolderButton" type="button" aria-label="新規フォルダー">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 7h6l2 2h8v8H4z" />
+                      </svg>
+                    </button>
+                    <button class="new-session" id="newSessionButton" type="button" aria-label="新規チャット">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="session-list" id="sessionList"></div>
+              </aside>
+
+              <section class="conversation-panel" aria-label="会話">
+                <header class="conversation-header">
+                  <div>
+                    <h2 id="conversationTitle">Session</h2>
+                  </div>
+                  <div class="chat-runtime" aria-label="モデルルーティング">
+                    <div class="model-segmented" id="modelRouteSelector" role="group" aria-label="使用モデル">
+                      <button type="button" data-model="auto" aria-pressed="true">Auto</button>
+                      <button type="button" data-model="agents-a1" aria-pressed="false">Agents-A1</button>
+                      <button type="button" data-model="ornith" aria-pressed="false">Ornith</button>
+                      <button class="message-action reasoning-toggle" id="reasoningToggle" type="button" aria-label="推論を切り替える" aria-pressed="false">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M9 18h6" />
+                          <path d="M10 21h4" />
+                          <path d="M8.5 14.5a5 5 0 1 1 7 0c-.8.7-1.2 1.4-1.4 2h-4.2c-.2-.6-.6-1.3-1.4-2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p id="conversationMeta"></p>
+                </header>
+
+                <div class="message-list" id="messageList"></div>
+
+                <form class="composer" aria-label="メッセージ入力">
+                  <div class="composer-box">
+                    <textarea rows="2" aria-label="チャットメッセージ" placeholder="ローカルモデルに送るメッセージ"></textarea>
+                    <button class="composer-send" type="submit" aria-label="送信">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12h13" />
+                        <path d="M13 6l6 6-6 6" />
+                      </svg>
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </section>
+
+          <section class="coding-view view" id="coding" data-view="coding" aria-labelledby="codingTitle" hidden>
+            <header class="view-heading">
+              <h1 id="codingTitle">Coding</h1>
+            </header>
+            <div class="coding-shell">
+              <aside class="project-panel" aria-label="プロジェクト">
+                <div class="project-heading">
+                  <p class="section-kicker">Projects</p>
+                  <button class="new-session" id="newProjectButton" type="button" aria-label="新規プロジェクト">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="project-list" id="codingProjectList"></div>
+              </aside>
+
+              <section class="coding-workbench" aria-label="コーディングワークスペース">
+                <header class="workspace-header">
+                  <div>
+                    <h2 id="codingProjectTitle">Project</h2>
+                  </div>
+                  <p id="codingProjectMeta"></p>
+                </header>
+
+                <div class="workspace-grid">
+                  <section class="workspace-panel" aria-label="ファイルツリー">
+                    <div class="panel-heading">
+                      <h3>Files</h3>
+                    </div>
+                    <div class="workspace-tree" id="codingWorkspaceTree"></div>
+                  </section>
+
+                  <section class="coding-session-detail" id="codingSessionDetail" aria-label="セッション詳細">
+                    <header class="detail-header">
+                      <div>
+                        <h3 id="codingSessionTitle">Session</h3>
+                      </div>
+                      <p id="codingSessionMeta"></p>
+                    </header>
+                    <div class="coding-session-body" id="codingSessionBody"></div>
+                  </section>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="notebook-view view" id="notebook" data-view="notebook" aria-labelledby="notebookTitle" hidden>
+            <header class="view-heading">
+              <h1 id="notebookTitle">Notebook</h1>
+            </header>
+            <div class="notebook-shell">
+              <aside class="notebook-sessions" aria-label="Notebookノート">
+                <div class="session-heading">
+                  <p class="section-kicker">Notes</p>
+                  <button class="new-session" id="newNotebookNoteButton" type="button" aria-label="ノートを追加">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="project-list" id="notebookNoteList"></div>
+              </aside>
+
+              <section class="notebook-main" aria-label="Notebook workspace">
+                <header class="notebook-header">
+                  <div>
+                    <h2 id="notebookConversationTitle">Local Model Research</h2>
+                    <p id="notebookSourceMeta">3 sources / Local model harness selected</p>
+                  </div>
+                </header>
+
+                <div class="notebook-chat-list" id="notebookChatList"></div>
+
+                <form class="composer notebook-composer" aria-label="Notebookチャット入力">
+                  <div class="composer-box">
+                    <textarea rows="2" aria-label="Notebookへ質問" placeholder="ソースについて質問"></textarea>
+                    <button class="composer-send" type="submit" aria-label="送信">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12h13" />
+                        <path d="M13 6l6 6-6 6" />
+                      </svg>
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <aside class="notebook-sources" aria-label="Notebook sources">
+                <div class="session-heading">
+                  <div>
+                    <p class="section-kicker">Sources</p>
+                  </div>
+                  <button class="new-session" id="newSourceButton" type="button" aria-label="ソースを追加">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="source-list" id="sourceList" aria-label="追加済みソース"></div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="skill-view view" id="skill" data-view="skill" aria-labelledby="skillTitle" hidden>
+            <div class="skill-shell">
+              <header class="skill-heading">
+                <div>
+                  <h1 id="skillTitle">Skill</h1>
+                </div>
+                <div class="skill-toolbar">
+                  <input class="skill-search" id="skillSearch" type="search" aria-label="SKILLを検索" placeholder="Search skills" />
+                  <button class="new-session" id="newSkillButton" type="button" aria-label="SKILLを追加">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+              </header>
+
+              <div class="skill-grid" id="skillList" aria-label="SKILL一覧"></div>
+            </div>
+          </section>
+
+          <section class="skill-view view" id="tool" data-view="tool" aria-labelledby="toolTitle" hidden>
+            <div class="skill-shell">
+              <header class="skill-heading">
+                <div>
+                  <h1 id="toolTitle">Tool</h1>
+                </div>
+                <div class="skill-toolbar">
+                  <input class="skill-search" id="toolSearch" type="search" aria-label="ツールを検索" placeholder="Search tools" />
+                  <button class="new-session" id="newToolButton" type="button" aria-label="ツールを追加">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                  </button>
+                </div>
+              </header>
+
+              <div class="skill-grid" id="toolList" aria-label="ツール一覧"></div>
+            </div>
+          </section>
+
+          <section class="skill-view view" id="automation" data-view="automation" aria-labelledby="automationTitle" hidden>
+            <div class="skill-shell">
+              <header class="skill-heading">
+                <div>
+                  <h1 id="automationTitle">Automation</h1>
+                </div>
+              </header>
+            </div>
+          </section>
+
+          <section class="skill-view view" id="knowledge" data-view="knowledge" aria-labelledby="knowledgeTitle" hidden>
+            <div class="skill-shell">
+              <header class="skill-heading">
+                <div>
+                  <h1 id="knowledgeTitle">Knowledge</h1>
+                </div>
+              </header>
+            </div>
+          </section>
+
+          <section class="skill-view view" id="setting" data-view="setting" aria-labelledby="settingTitle" hidden>
+            <div class="skill-shell">
+              <header class="skill-heading">
+                <div>
+                  <h1 id="settingTitle">Setting</h1>
+                </div>
+              </header>
+              <div class="settings-grid">
+                <section class="system-panel" aria-label="UIサイズ設定">
+                  <h2>UI Size</h2>
+                  <label class="setting-row">
+                    <span class="detail-label">Scale</span>
+                    <input class="setting-range" id="uiSizeRange" type="range" min="90" max="120" step="5" value="100" />
+                  </label>
+                  <p class="detail-value" id="uiSizeValue">100%</p>
+                </section>
+
+                <section class="system-panel" aria-label="デフォルトモデル設定">
+                  <h2>Default Model</h2>
+                  <label class="setting-row">
+                    <span class="detail-label">Routing</span>
+                    <select class="setting-input" id="defaultModelSelect">
+                      <option value="auto">Auto</option>
+                      <option value="agents-a1">Agents-A1</option>
+                      <option value="ornith">Ornith</option>
+                    </select>
+                  </label>
+                  <label class="setting-row setting-check-row">
+                    <input id="defaultReasoningToggle" type="checkbox" />
+                    <span>推論を新規セッションでONにする</span>
+                  </label>
+                </section>
+
+                <section class="system-panel" aria-label="外部接続トークン">
+                  <h2>External Token</h2>
+                  <div class="token-row">
+                    <input class="setting-input token-input" id="externalTokenInput" value="" readonly />
+                    <button class="message-action setting-icon-button" id="regenerateTokenButton" type="button" aria-label="トークンを再生成">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M17.5 7.5A6 6 0 1 0 18 16" />
+                        <path d="M17.5 7.5V4" />
+                        <path d="M17.5 7.5H14" />
+                      </svg>
+                    </button>
+                    <button class="message-action setting-icon-button" id="copyTokenButton" type="button" aria-label="トークンをコピー">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 8h10v10H8z" />
+                        <path d="M6 16H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </button>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
