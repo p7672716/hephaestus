@@ -124,7 +124,17 @@ export function ChatView(props: ChatViewProps) {
                   <button className="delete-button" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}>×</button>
                 </div>
                 {open && (
-                  <div className="folder-sessions">
+                  <div
+                    className={draggingSessionId ? 'folder-sessions is-drop-target' : 'folder-sessions'}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onDrop={(event) => {
+                      event.stopPropagation();
+                      dropSession(event, folder.id);
+                    }}
+                  >
                     {children.length ? children.map((session) => (
                       <SessionRow
                         key={session.id}

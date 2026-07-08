@@ -28,7 +28,7 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
     task.id === id ? { ...task, state } : task.state === 'running' && state === 'running' ? { ...task, state: 'stopped' } : task
   )));
   const removeTask = (id: string) => setQueue((current) => current.filter((task) => task.id !== id));
-  const moveWaitingTask = (targetId: string) => {
+  const moveWaitingTask = (targetId: string, after = false) => {
     if (!draggedTaskId || draggedTaskId === targetId) return;
     setQueue((current) => {
       const dragged = current.find((task) => task.id === draggedTaskId && task.state === 'waiting');
@@ -36,7 +36,16 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
       const without = current.filter((task) => task.id !== draggedTaskId);
       const targetIndex = without.findIndex((task) => task.id === targetId);
       if (targetIndex < 0) return current;
-      return [...without.slice(0, targetIndex), dragged, ...without.slice(targetIndex)];
+      const insertIndex = targetIndex + (after ? 1 : 0);
+      return [...without.slice(0, insertIndex), dragged, ...without.slice(insertIndex)];
+    });
+  };
+  const moveWaitingTaskToEnd = () => {
+    if (!draggedTaskId) return;
+    setQueue((current) => {
+      const dragged = current.find((task) => task.id === draggedTaskId && task.state === 'waiting');
+      if (!dragged) return current;
+      return [...current.filter((task) => task.id !== draggedTaskId), dragged];
     });
   };
 
@@ -82,13 +91,28 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
                 label={String(index + 1).padStart(2, '0')}
                 dragging={draggedTaskId === task.id}
                 onDragStart={() => setDraggedTaskId(task.id)}
-                onDragOver={() => moveWaitingTask(task.id)}
+                onDragOver={(after) => moveWaitingTask(task.id, after)}
                 onDragEnd={() => setDraggedTaskId(null)}
                 onStart={() => updateTask(task.id, 'running')}
                 onStop={() => updateTask(task.id, 'stopped')}
                 onDelete={() => removeTask(task.id)}
               />
             ))}
+            {waiting.length > 0 && (
+              <li
+                className={draggedTaskId ? 'queue-drop-tail is-active' : 'queue-drop-tail'}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  moveWaitingTaskToEnd();
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDraggedTaskId(null);
+                }}
+              >
+                Drop at end
+              </li>
+            )}
             {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} />)}
           </ol>
         </article>
@@ -123,7 +147,7 @@ function QueueItem(props: {
   label: string;
   dragging?: boolean;
   onDragStart?: () => void;
-  onDragOver?: () => void;
+  onDragOver?: (after: boolean) => void;
   onDragEnd?: () => void;
   onStart: () => void;
   onStop: () => void;
@@ -141,7 +165,8 @@ function QueueItem(props: {
       onDragOver={(event) => {
         if (props.task.state !== 'waiting') return;
         event.preventDefault();
-        props.onDragOver?.();
+        const rect = event.currentTarget.getBoundingClientRect();
+        props.onDragOver?.(event.clientY > rect.top + rect.height / 2);
       }}
       onDrop={(event) => event.preventDefault()}
       onDragEnd={props.onDragEnd}
