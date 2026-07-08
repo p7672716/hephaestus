@@ -97,11 +97,11 @@ export function ChatView(props: ChatViewProps) {
         <div className="panel-heading">
           <div><p className="eyebrow">Conversations</p><h2>Chat</h2></div>
           <div className="session-heading-actions">
-            <button className="round-button" type="button" onClick={props.onAddFolder} aria-label="New folder"><Icon name="folder" /></button>
-            <button className="round-button" type="button" onClick={props.onAddSession} aria-label="New chat"><Icon name="plus" /></button>
+            <button className="round-button new-session" id="newChatFolderButton" type="button" onClick={props.onAddFolder} aria-label="New folder"><Icon name="folder" /></button>
+            <button className="round-button new-session" id="newSessionButton" type="button" onClick={props.onAddSession} aria-label="New chat"><Icon name="plus" /></button>
           </div>
         </div>
-        <div className="session-list">
+        <div className="session-list" id="sessionList">
           {props.folders.map((folder) => {
             const open = props.expandedFolderId === folder.id;
             const children = props.sessions.filter((session) => session.folderId === folder.id);
@@ -175,6 +175,7 @@ export function ChatView(props: ChatViewProps) {
           <div className="conversation-title-edit">
             <p className="eyebrow">Local inference</p>
             <input
+              id="conversationTitle"
               aria-label="Session name"
               value={props.activeSession?.title ?? 'Chat'}
               onChange={(event) => props.activeSession && props.onRenameSession(props.activeSession.id, event.target.value)}
@@ -189,30 +190,35 @@ export function ChatView(props: ChatViewProps) {
                 {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.title}</option>)}
               </select>
             )}
+            <p id="conversationMeta" hidden />
           </div>
-          <div className="route-controls" aria-label="Model routing">
+          <div className="route-controls model-segmented" id="modelRouteSelector" role="group" aria-label="Model routing">
             {(['auto', 'agents-a1', 'ornith'] as ModelMode[]).map((mode) => (
               <button
                 key={mode}
                 type="button"
+                data-model={mode}
                 className={props.activeSession?.modelMode === mode ? 'is-active' : ''}
+                aria-pressed={props.activeSession?.modelMode === mode}
                 onClick={() => props.onModelMode(mode)}
               >
                 {mode === 'agents-a1' ? 'Agents-A1' : mode === 'ornith' ? 'Ornith' : 'Auto'}
               </button>
             ))}
-            <label className="reasoning-toggle">
-              <input
-                type="checkbox"
-                checked={props.activeSession?.reasoningEnabled ?? false}
-                onChange={(event) => props.onReasoning(event.target.checked)}
-              />
-              <span>Reasoning</span>
-            </label>
+            <button
+              className="message-action reasoning-toggle"
+              id="reasoningToggle"
+              type="button"
+              aria-label="推論を切り替える"
+              aria-pressed={props.activeSession?.reasoningEnabled ?? false}
+              onClick={() => props.onReasoning(!(props.activeSession?.reasoningEnabled ?? false))}
+            >
+              <Icon name="reasoning" />
+            </button>
           </div>
         </div>
 
-        <div className="message-list" aria-live="polite">
+        <div className="message-list" id="messageList" aria-live="polite">
           {!props.activeSession?.messages.length && (
             <div className="empty-conversation">
               <img className="empty-icon" src="/assets/hephaestus-icon.svg" width="56" height="56" alt="" />
@@ -274,44 +280,46 @@ export function ChatView(props: ChatViewProps) {
         </div>
 
         <form className="composer" onSubmit={submit}>
-          <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'}>
-            <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools"><Icon name="plus" /></button>
-            <div className="composer-tool-menu">
-              <button type="button" onClick={() => fileInputRef.current?.click()}>File</button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                hidden
-                onChange={(event) => {
-                  const names = Array.from(event.target.files ?? []).map((file) => `@${file.name}`);
-                  if (names.length) insertText(`${names.join(' ')} `);
-                  event.currentTarget.value = '';
-                  setSkillOpen(false);
-                }}
-              />
-              <div className="composer-skill-row">
-                <input value={skillText} onChange={(event) => setSkillText(event.target.value)} placeholder="$skill" />
-                <button type="button" onClick={addSkill}>Skill</button>
+          <div className="composer-box">
+            <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'}>
+              <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools"><Icon name="plus" /></button>
+              <div className="composer-tool-menu">
+                <button type="button" onClick={() => fileInputRef.current?.click()}>File</button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={(event) => {
+                    const names = Array.from(event.target.files ?? []).map((file) => `@${file.name}`);
+                    if (names.length) insertText(`${names.join(' ')} `);
+                    event.currentTarget.value = '';
+                    setSkillOpen(false);
+                  }}
+                />
+                <div className="composer-skill-row">
+                  <input value={skillText} onChange={(event) => setSkillText(event.target.value)} placeholder="$skill" />
+                  <button type="button" onClick={addSkill}>Skill</button>
+                </div>
               </div>
             </div>
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) event.currentTarget.form?.requestSubmit();
+              }}
+              placeholder="Message Hephaestus…"
+              rows={3}
+            />
+            {props.streaming ? (
+              <button className="composer-send" type="button" onClick={props.onStop} aria-label="Stop"><Icon name="stop" /></button>
+            ) : (
+              <button className="composer-send" type="submit" disabled={!text.trim()} aria-label="Send"><Icon name="send" /></button>
+            )}
           </div>
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) event.currentTarget.form?.requestSubmit();
-            }}
-            placeholder="Message Hephaestus…"
-            rows={3}
-          />
           <div className="composer-footer">
             <span>Ctrl/⌘ + Enter to send</span>
-            {props.streaming ? (
-              <button className="primary-button" type="button" onClick={props.onStop}>Stop</button>
-            ) : (
-              <button className="primary-button" type="submit" disabled={!text.trim()}>Send</button>
-            )}
           </div>
         </form>
       </div>

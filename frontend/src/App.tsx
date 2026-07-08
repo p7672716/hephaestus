@@ -13,9 +13,16 @@ import { useSettings } from './hooks/useSettings';
 import type { ViewId } from './types';
 
 const THEME_KEY = 'hephaestus-theme';
+const viewIds: ViewId[] = ['dashboard', 'chat', 'coding', 'notebook', 'skill', 'tool', 'automation', 'knowledge', 'setting'];
+
+function viewFromHash(): ViewId {
+  const candidate = window.location.hash.slice(1);
+  if (candidate === 'index') return 'knowledge';
+  return viewIds.includes(candidate as ViewId) ? candidate as ViewId : 'dashboard';
+}
 
 export default function App() {
-  const [view, setView] = useState<ViewId>('chat');
+  const [view, setView] = useState<ViewId>(viewFromHash);
   const [collapsed, setCollapsed] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem(THEME_KEY) === 'dark');
   const auth = useAuth();
@@ -28,6 +35,17 @@ export default function App() {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
   }, [dark]);
+
+  useEffect(() => {
+    const syncHash = () => setView(viewFromHash());
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
+
+  function selectView(next: ViewId) {
+    setView(next);
+    if (window.location.hash !== `#${next}`) window.location.hash = next;
+  }
 
   async function resumeRuntime() {
     const selected = chat.activeSession?.modelMode;
@@ -60,6 +78,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main">Mainへ移動</a>
       <RuntimeBar
         runtime={runtime.runtime}
         generating={chat.streaming}
@@ -71,8 +90,8 @@ export default function App() {
         onResume={() => void resumeRuntime()}
       />
       <div className="body-shell">
-        <Sidebar view={view} collapsed={collapsed} onSelect={setView} />
-        <main className="main-surface">
+        <Sidebar view={view} collapsed={collapsed} onSelect={selectView} />
+        <main className="main-surface" id="main" tabIndex={-1} aria-label="ワークスペース">
           {view === 'dashboard' && <DashboardView runtime={runtime.runtime} sessions={chat.sessions} />}
           {view === 'chat' && (
             <ChatView

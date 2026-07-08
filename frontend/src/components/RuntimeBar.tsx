@@ -15,7 +15,8 @@ interface RuntimeBarProps {
 function runtimeState(runtime: RuntimeInfo, generating: boolean) {
   if (generating) return '生成中';
   if (runtime.state === 'starting') return 'ロード中';
-  if (runtime.state === 'ready' || runtime.state === 'mock') return 'アイドル';
+  if (runtime.state === 'mock') return 'mock';
+  if (runtime.state === 'ready') return 'アイドル';
   if (runtime.state === 'idle') return '停止中';
   if (runtime.state === 'error') return 'エラー';
   if (runtime.state === 'offline') return 'オフライン';
@@ -32,14 +33,14 @@ export function RuntimeBar(props: RuntimeBarProps) {
     <header className="topbar">
       <button className="icon-button" type="button" onClick={props.onToggleSidebar} aria-label="Toggle sidebar"><Icon name="menu" /></button>
       <div className="brand"><img className="brand-icon" src="/assets/hephaestus-icon.svg" width="40" height="40" alt="" /><strong>Hephaestus</strong></div>
-      <div className="runtime-pill" title={props.runtime.last_error ?? undefined}>
+      <div className="runtime-pill topbar-runtime" title={props.runtime.last_error ?? undefined}>
         <span className={`status-dot state-${props.runtime.state}`} />
-        <span>{runtimeState(props.runtime, props.generating)}</span>
-        <strong>{label}</strong>
+        <span id="runtimeStatus">{runtimeState(props.runtime, props.generating)}</span>
+        <strong id="runtimeModel">{label}</strong>
         {props.runtime.acceleration && <small>{props.runtime.acceleration}</small>}
-        <small>{props.reasoningEnabled ? 'Reasoning ON' : 'Reasoning OFF'}</small>
-        <button type="button" onClick={props.onStop} disabled={!props.generating && !props.runtime.active_model_id} aria-label="Stop"><Icon name="stop" /></button>
-        <button type="button" onClick={props.onResume} disabled={props.generating || props.runtime.state === 'starting'} aria-label="Resume"><Icon name="play" /></button>
+        <span id="runtimeReasoning">{props.reasoningEnabled ? '推論ON' : '推論OFF'}</span>
+        <button className="topbar-runtime-button" id="runtimeStop" type="button" onClick={props.onStop} disabled={!props.generating && !props.runtime.active_model_id} aria-label="モデルをアンロードまたは生成を停止"><Icon name="stop" /></button>
+        <button className="topbar-runtime-button" id="runtimeResume" type="button" onClick={props.onResume} disabled={props.generating || props.runtime.state === 'starting'} aria-label="モデルをロード"><Icon name="play" /></button>
       </div>
       <button className="icon-button" type="button" onClick={props.onToggleTheme} aria-label="Toggle theme"><Icon name={props.dark ? 'sun' : 'moon'} /></button>
     </header>

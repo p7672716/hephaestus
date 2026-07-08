@@ -29,6 +29,7 @@ export function Sidebar({ view, collapsed, onSelect }: SidebarProps) {
             type="button"
             className={view === item.id ? 'nav-item is-active' : 'nav-item'}
             aria-current={view === item.id ? 'page' : undefined}
+            data-label={item.label}
             title={item.label}
             onClick={() => onSelect(item.id)}
           >
