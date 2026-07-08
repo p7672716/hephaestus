@@ -1,0 +1,23 @@
+{
+  "name": "Hephaestus",
+  "short_name": "Hephaestus",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f0e7",
+  "theme_color": "#bd5a3b",
+  "icons": [
+    {
+      "src": "/assets/hephaestus-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/hephaestus-icon.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

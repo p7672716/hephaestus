@@ -113,14 +113,17 @@ export function ChatView(props: ChatViewProps) {
                 onDrop={(event) => dropSession(event, folder.id)}
               >
                 <div className="session-row">
-                  <button type="button" onClick={() => props.onToggleFolder(open ? null : folder.id)}>
-                    <input
-                      aria-label={`${folder.title} name`}
-                      value={folder.title}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={(event) => props.onRenameFolder(folder.id, event.target.value)}
-                    />
-                    <span>{children.length} sessions</span>
+                  <button className="folder-select session-select" type="button" onClick={() => props.onToggleFolder(open ? null : folder.id)} aria-expanded={open}>
+                    <span className="chat-folder-icon"><Icon name="folder" /></span>
+                    <span className="folder-title-stack">
+                      <input
+                        aria-label={`${folder.title} name`}
+                        value={folder.title}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => props.onRenameFolder(folder.id, event.target.value)}
+                      />
+                      <span>{children.length} sessions</span>
+                    </span>
                   </button>
                   <button className="delete-button" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}><Icon name="trash" /></button>
                 </div>

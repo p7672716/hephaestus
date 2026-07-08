@@ -31,8 +31,8 @@ export function RuntimeBar(props: RuntimeBarProps) {
 
   return (
     <header className="topbar">
-      <button className="icon-button" type="button" onClick={props.onToggleSidebar} aria-label="Toggle sidebar"><Icon name="menu" /></button>
-      <div className="brand"><img className="brand-icon" src="/assets/hephaestus-icon.svg" width="40" height="40" alt="" /><strong>Hephaestus</strong></div>
+      <button className="icon-button sidebar-toggle" id="sidebarToggle" type="button" onClick={props.onToggleSidebar} aria-label="Toggle sidebar"><Icon name="menu" /></button>
+      <div className="brand"><img className="brand-icon" src="/assets/hephaestus-icon.svg" width="40" height="40" alt="" /><strong className="brand-name">Hephaestus</strong></div>
       <div className="runtime-pill topbar-runtime" title={props.runtime.last_error ?? undefined}>
         <span className={`status-dot state-${props.runtime.state}`} />
         <span id="runtimeStatus">{runtimeState(props.runtime, props.generating)}</span>
@@ -42,7 +42,10 @@ export function RuntimeBar(props: RuntimeBarProps) {
         <button className="topbar-runtime-button" id="runtimeStop" type="button" onClick={props.onStop} disabled={!props.generating && !props.runtime.active_model_id} aria-label="モデルをアンロードまたは生成を停止"><Icon name="stop" /></button>
         <button className="topbar-runtime-button" id="runtimeResume" type="button" onClick={props.onResume} disabled={props.generating || props.runtime.state === 'starting'} aria-label="モデルをロード"><Icon name="play" /></button>
       </div>
-      <button className="icon-button" type="button" onClick={props.onToggleTheme} aria-label="Toggle theme"><Icon name={props.dark ? 'sun' : 'moon'} /></button>
+      <button className="icon-button theme-toggle" id="themeToggle" type="button" onClick={props.onToggleTheme} aria-label="Toggle theme" aria-pressed={props.dark}>
+        <Icon name="moon" className="theme-icon moon-icon" />
+        <Icon name="sun" className="theme-icon sun-icon" />
+      </button>
     </header>
   );
 }

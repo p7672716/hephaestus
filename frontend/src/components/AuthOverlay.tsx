@@ -25,14 +25,15 @@ export function AuthOverlay({ error, onLogin }: AuthOverlayProps) {
   }
 
   return (
-    <div className="auth-overlay" role="presentation">
-      <form className="auth-card" onSubmit={submit}>
+    <div className="auth-overlay" id="authOverlay" role="presentation">
+      <form className="auth-card auth-dialog" id="authForm" onSubmit={submit}>
         <img className="auth-icon" src="/assets/hephaestus-icon.svg" width="48" height="48" alt="" />
         <p className="eyebrow">Remote access</p>
         <h1>Hephaestus</h1>
-        <label>
+        <label className="auth-field">
           <span>Access token</span>
           <input
+            id="authTokenInput"
             type="password"
             autoComplete="current-password"
             value={token}
@@ -40,8 +41,8 @@ export function AuthOverlay({ error, onLogin }: AuthOverlayProps) {
             autoFocus
           />
         </label>
-        <button type="submit" disabled={pending}>{pending ? 'Connecting…' : 'Connect'}</button>
-        {(message || error) && <p className="form-error">{message || error}</p>}
+        <button className="auth-submit" id="authSubmit" type="submit" disabled={pending}>{pending ? 'Connecting…' : 'Connect'}</button>
+        {(message || error) && <p className="form-error auth-message" id="authMessage">{message || error}</p>}
       </form>
     </div>
   );
