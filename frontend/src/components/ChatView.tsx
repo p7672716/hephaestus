@@ -92,10 +92,10 @@ export function ChatView(props: ChatViewProps) {
   };
 
   return (
-    <section className="chat-layout">
+    <section className="chat-layout chat-shell chat-view view" id="chat" data-view="chat" aria-labelledby="chatTitle">
       <aside className="session-panel">
         <div className="panel-heading">
-          <div><p className="eyebrow">Conversations</p><h2>Chat</h2></div>
+          <div><p className="eyebrow section-kicker">Conversations</p><h2 id="chatTitle">Chat</h2></div>
           <div className="session-heading-actions">
             <button className="round-button new-session" id="newChatFolderButton" type="button" onClick={props.onAddFolder} aria-label="New folder"><Icon name="folder" /></button>
             <button className="round-button new-session" id="newSessionButton" type="button" onClick={props.onAddSession} aria-label="New chat"><Icon name="plus" /></button>
@@ -108,15 +108,16 @@ export function ChatView(props: ChatViewProps) {
             return (
               <div
                 key={folder.id}
-                className={draggingSessionId ? 'folder-row is-drop-target' : 'folder-row'}
+                className={`${draggingSessionId ? 'folder-row project-item chat-folder is-drop-target' : 'folder-row project-item chat-folder'}${open ? ' is-expanded' : ''}`}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => dropSession(event, folder.id)}
               >
-                <div className="session-row">
-                  <button className="folder-select session-select" type="button" onClick={() => props.onToggleFolder(open ? null : folder.id)} aria-expanded={open}>
+                <div className="session-row project-row session-item">
+                  <button className="folder-select project-select session-select" type="button" onClick={() => props.onToggleFolder(open ? null : folder.id)} aria-expanded={open}>
                     <span className="chat-folder-icon"><Icon name="folder" /></span>
                     <span className="folder-title-stack">
                       <input
+                        className="project-title session-title"
                         aria-label={`${folder.title} name`}
                         value={folder.title}
                         onClick={(event) => event.stopPropagation()}
@@ -125,7 +126,7 @@ export function ChatView(props: ChatViewProps) {
                       <span>{children.length} sessions</span>
                     </span>
                   </button>
-                  <button className="delete-button" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}><Icon name="trash" /></button>
+                  <button className="delete-button session-delete" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}><Icon name="trash" /></button>
                 </div>
                 {open && (
                   <div
@@ -174,7 +175,7 @@ export function ChatView(props: ChatViewProps) {
       </aside>
 
       <div className="conversation-panel">
-        <div className="conversation-toolbar">
+        <div className="conversation-toolbar conversation-header">
           <div className="conversation-title-edit">
             <p className="eyebrow">Local inference</p>
             <input
@@ -195,7 +196,7 @@ export function ChatView(props: ChatViewProps) {
             )}
             <p id="conversationMeta" hidden />
           </div>
-          <div className="route-controls model-segmented" id="modelRouteSelector" role="group" aria-label="Model routing">
+          <div className="route-controls model-segmented chat-runtime" id="modelRouteSelector" role="group" aria-label="Model routing">
             {(['auto', 'agents-a1', 'ornith'] as ModelMode[]).map((mode) => (
               <button
                 key={mode}
@@ -238,31 +239,31 @@ export function ChatView(props: ChatViewProps) {
             const editing = editingMessageId === message.id;
             return (
               <article key={message.id} className={`message from-${message.role}`}>
-                <header>
-                  <strong>{message.role === 'user' ? 'You' : message.metadata?.selectedModelLabel ?? 'Hephaestus'}</strong>
-                  <span>{formatTime(message.createdAt)}</span>
-                  {message.metadata?.provider && <span>{message.metadata.provider}</span>}
-                  {message.metrics?.tokensPerSecond && <span>{message.metrics.tokensPerSecond.toFixed(1)} t/s</span>}
-                  <span className="message-actions">
+                <header className="message-header">
+                  <strong className="message-role message-role-group">{message.role === 'user' ? 'You' : message.metadata?.selectedModelLabel ?? 'Hephaestus'}</strong>
+                  <span className="message-time">{formatTime(message.createdAt)}</span>
+                  {message.metadata?.provider && <span className="message-metrics">{message.metadata.provider}</span>}
+                  {message.metrics?.tokensPerSecond && <span className="message-metrics">{message.metrics.tokensPerSecond.toFixed(1)} t/s</span>}
+                  <span className="message-actions version-controls">
                     {versions.length > 1 && (
                       <>
-                        <button type="button" disabled={versionIndex <= 0} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex - 1)} aria-label="Previous version"><Icon name="prev" /></button>
-                        <small>{versionIndex + 1} / {versions.length}</small>
-                        <button type="button" disabled={versionIndex >= versions.length - 1} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex + 1)} aria-label="Next version"><Icon name="next" /></button>
+                        <button className="message-action" type="button" disabled={versionIndex <= 0} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex - 1)} aria-label="Previous version"><Icon name="prev" /></button>
+                        <small className="message-version">{versionIndex + 1} / {versions.length}</small>
+                        <button className="message-action" type="button" disabled={versionIndex >= versions.length - 1} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex + 1)} aria-label="Next version"><Icon name="next" /></button>
                       </>
                     )}
                     {message.role === 'user' && (
-                      <button type="button" onClick={() => { setEditingMessageId(message.id); setEditingText(message.content); }} aria-label="Edit message"><Icon name="edit" /></button>
+                      <button className="message-action" type="button" onClick={() => { setEditingMessageId(message.id); setEditingText(message.content); }} aria-label="Edit message"><Icon name="edit" /></button>
                     )}
                   </span>
                 </header>
                 {progress && (
-                  <details className="reasoning-block" open={message.streaming}>
+                  <details className="reasoning-block message-progress" open={message.streaming}>
                     <summary>{message.streaming ? '進捗を表示中' : '進捗'}</summary>
-                    <div className="reasoning-text"><MarkdownText text={progress} /></div>
+                    <div className="reasoning-text message-progress-text"><MarkdownText text={progress} /></div>
                   </details>
                 )}
-                {answer && <div className="message-content"><MarkdownText text={answer} /></div>}
+                {answer && <div className="message-content message-body message-text"><MarkdownText text={answer} /></div>}
                 {editing && (
                   <form className="edit-form" onSubmit={(event) => {
                     event.preventDefault();
@@ -271,8 +272,8 @@ export function ChatView(props: ChatViewProps) {
                   }}>
                     <textarea value={editingText} onChange={(event) => setEditingText(event.target.value)} />
                     <div className="edit-actions">
-                      <button type="button" onClick={() => setEditingMessageId(null)}>Cancel</button>
-                      <button type="submit">Save</button>
+                      <button className="edit-cancel" type="button" onClick={() => setEditingMessageId(null)}>Cancel</button>
+                      <button className="edit-submit" type="submit">Save</button>
                     </div>
                   </form>
                 )}
@@ -287,8 +288,9 @@ export function ChatView(props: ChatViewProps) {
             <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'}>
               <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools"><Icon name="plus" /></button>
               <div className="composer-tool-menu">
-                <button type="button" onClick={() => fileInputRef.current?.click()}>File</button>
+                <button className="composer-tool-option" type="button" onClick={() => fileInputRef.current?.click()}>File</button>
                 <input
+                  className="composer-file-input"
                   ref={fileInputRef}
                   type="file"
                   multiple
@@ -301,8 +303,8 @@ export function ChatView(props: ChatViewProps) {
                   }}
                 />
                 <div className="composer-skill-row">
-                  <input value={skillText} onChange={(event) => setSkillText(event.target.value)} placeholder="$skill" />
-                  <button type="button" onClick={addSkill}>Skill</button>
+                  <input className="composer-skill-input" value={skillText} onChange={(event) => setSkillText(event.target.value)} placeholder="$skill" />
+                  <button className="composer-tool-option" type="button" onClick={addSkill}>Skill</button>
                 </div>
               </div>
             </div>
@@ -345,7 +347,7 @@ function SessionRow({
 }) {
   return (
     <div
-      className={`${session.id === props.activeId ? 'session-row is-active' : 'session-row'}${dragging ? ' is-dragging' : ''}`}
+      className={`${session.id === props.activeId ? 'session-row session-item is-active' : 'session-row session-item'}${dragging ? ' is-dragging' : ''}`}
       draggable
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move';
@@ -354,8 +356,9 @@ function SessionRow({
       }}
       onDragEnd={onDragEnd}
     >
-      <button type="button" onClick={() => props.onSelectSession(session.id)}>
+      <button className="session-select" type="button" onClick={() => props.onSelectSession(session.id)}>
         <input
+          className="session-title"
           aria-label={`${session.title} name`}
           value={session.title}
           onClick={(event) => event.stopPropagation()}
@@ -363,7 +366,7 @@ function SessionRow({
         />
         <span>{formatTime(session.updatedAt)} · {session.modelMode}</span>
       </button>
-      <button className="delete-button" type="button" onClick={() => props.onDeleteSession(session.id)} aria-label={`Delete ${session.title}`}><Icon name="trash" /></button>
+      <button className="delete-button session-delete" type="button" onClick={() => props.onDeleteSession(session.id)} aria-label={`Delete ${session.title}`}><Icon name="trash" /></button>
     </div>
   );
 }

@@ -21,13 +21,13 @@ interface SidebarProps {
 
 export function Sidebar({ view, collapsed, onSelect }: SidebarProps) {
   return (
-    <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} aria-label="Main navigation">
-      <nav>
+    <aside className={collapsed ? 'sidebar is-collapsed' : 'sidebar'} id="sidebar" aria-label="Main navigation">
+      <nav className="nav-list">
         {items.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={view === item.id ? 'nav-item is-active' : 'nav-item'}
+            className={view === item.id ? 'nav-item is-active active' : 'nav-item'}
             aria-current={view === item.id ? 'page' : undefined}
             data-label={item.label}
             title={item.label}

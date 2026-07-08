@@ -56,46 +56,53 @@ export function PlaceholderView({ view }: { view: StaticViewId }) {
 function CodingView() {
   const active = projects[0];
   return (
-    <section className="page static-view coding-view">
-      <header className="view-heading"><p className="eyebrow">Workspace</p><h1>Coding</h1></header>
-      <div className="static-coding-shell">
-        <aside className="surface-card static-side-panel">
-          <div className="static-panel-heading">
-            <p className="eyebrow">Projects</p>
-            <button className="round-button" type="button" disabled aria-label="New project"><Icon name="plus" /></button>
+    <section className="page static-view coding-view view" id="coding" data-view="coding" aria-labelledby="codingTitle">
+      <header className="view-heading"><p className="eyebrow section-kicker">Workspace</p><h1 id="codingTitle">Coding</h1></header>
+      <div className="static-coding-shell coding-shell">
+        <aside className="surface-card static-side-panel project-panel">
+          <div className="static-panel-heading project-heading">
+            <p className="eyebrow section-kicker">Projects</p>
+            <button className="round-button coding-session-create" id="newProjectButton" type="button" disabled aria-label="New project"><Icon name="plus" /></button>
           </div>
-          {projects.map((project, index) => (
-            <div key={project.name} className={index === 0 ? 'static-list-item is-active' : 'static-list-item'}>
-              <strong>{project.name}</strong>
-              <span>{project.updated}</span>
-              {index === 0 && (
-                <div className="static-accordion">
-                  <p>Coding</p>
-                  {project.sessions.map((session) => <button key={session} type="button" disabled>{session}</button>)}
-                  <p>Linked Chat</p>
-                  {project.linked.map((session) => <button key={session} type="button" disabled>{session}</button>)}
-                </div>
-              )}
-            </div>
-          ))}
+          <div className="project-list" id="codingProjectList">
+            {projects.map((project, index) => (
+              <div key={project.name} className={index === 0 ? 'static-list-item project-item is-active is-expanded' : 'static-list-item project-item'}>
+                <strong className="project-title project-select">{project.name}</strong>
+                <span className="project-meta">{project.updated}</span>
+                {index === 0 && (
+                  <div className="static-accordion project-accordion">
+                    <div className="project-accordion-inner">
+                    <p>Coding</p>
+                    {project.sessions.map((session) => <button key={session} className="accordion-session coding-session-item session-item coding-session-select session-select" type="button" disabled><span className="coding-session-title">{session}</span></button>)}
+                    <p>Linked Chat</p>
+                    {project.linked.map((session) => <button key={session} className="accordion-session coding-session-item session-item coding-session-select session-select" type="button" disabled><span className="coding-session-title">{session}</span></button>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </aside>
-        <section className="surface-card static-workbench">
-          <header className="static-workspace-header">
-            <div><p className="eyebrow">Project</p><h2>{active.name}</h2></div>
+        <section className="surface-card static-workbench coding-workbench">
+          <header className="static-workspace-header workspace-header workspace-settings">
+            <div><p className="eyebrow section-kicker">Project</p><h2 id="codingProjectTitle">{active.name}</h2></div>
+            <p id="codingProjectMeta" hidden>{active.updated}</p>
             <span className="state-badge">Dummy</span>
           </header>
-          <div className="static-workspace-grid">
-            <section className="static-tree">
-              <p className="eyebrow">Workspace</p>
+          <div className="static-workspace-grid workspace-grid">
+            <section className="static-tree workspace-panel workspace-tree" id="codingWorkspaceTree">
+              <p className="eyebrow section-kicker">Workspace</p>
               {active.files.map((file) => {
                 const [name, meta] = file.split(' / ');
-                return <div key={file} className="tree-row"><span>{name.includes('.') ? 'file' : 'dir'}</span><strong>{name}</strong><small>{meta}</small></div>;
+                return <div key={file} className="tree-row"><span className="tree-kind">{name.includes('.') ? 'file' : 'dir'}</span><strong className="tree-name">{name}</strong><small className="tree-meta">{meta}</small></div>;
               })}
             </section>
-            <section className="static-session-detail">
-              <div><p className="eyebrow">Session</p><h2>Chat UI build</h2></div>
-              <div className="static-message from-assistant">Workspace ready. Describe the code change to make in this project.</div>
-              <div className="static-composer"><span>このセッションに送るメッセージ</span><Icon name="send" /></div>
+            <section className="static-session-detail coding-session-detail" id="codingSessionDetail">
+              <header className="detail-header"><div><p className="eyebrow section-kicker">Session</p><h2 className="coding-session-title" id="codingSessionTitle">Chat UI build</h2></div><p id="codingSessionMeta" hidden>Dummy</p></header>
+              <div className="coding-session-body detail-block" id="codingSessionBody">
+                <div className="static-message from-assistant">Workspace ready. Describe the code change to make in this project.</div>
+              </div>
+              <div className="static-composer coding-chat-composer"><span>このセッションに送るメッセージ</span><Icon name="send" /></div>
             </section>
           </div>
         </section>
@@ -107,24 +114,30 @@ function CodingView() {
 function NotebookView() {
   const active = notes[0];
   return (
-    <section className="page static-view notebook-view">
-      <header className="view-heading"><p className="eyebrow">Research</p><h1>Notebook</h1></header>
-      <div className="static-notebook-shell">
-        <aside className="surface-card static-side-panel">
-          <div className="static-panel-heading"><p className="eyebrow">Notes</p><button className="round-button" type="button" disabled aria-label="Add note"><Icon name="plus" /></button></div>
-          {notes.map((note, index) => <div key={note.title} className={index === 0 ? 'static-list-item is-active' : 'static-list-item'}><strong>{note.title}</strong><span>{note.updated}</span></div>)}
+    <section className="page static-view notebook-view view" id="notebook" data-view="notebook" aria-labelledby="notebookTitle">
+      <header className="view-heading"><p className="eyebrow section-kicker">Research</p><h1 id="notebookTitle">Notebook</h1></header>
+      <div className="static-notebook-shell notebook-shell">
+        <aside className="surface-card static-side-panel notebook-sessions">
+          <div className="static-panel-heading"><p className="eyebrow section-kicker">Notes</p><button className="round-button" id="newNotebookNoteButton" type="button" disabled aria-label="Add note"><Icon name="plus" /></button></div>
+          <div className="project-list" id="notebookNoteList">
+            {notes.map((note, index) => <div key={note.title} className={index === 0 ? 'static-list-item project-item is-active' : 'static-list-item project-item'}><strong className="project-title">{note.title}</strong><span className="project-meta">{note.updated}</span></div>)}
+          </div>
         </aside>
-        <section className="surface-card static-session-detail">
-          <header><p className="eyebrow">Conversation</p><h2>Local Model Research</h2><span>3 sources / Local model harness selected</span></header>
-          <div className="static-message from-assistant">選択中のSourceに基づいて質問できます。回答生成処理は後で接続します。</div>
-          <div className="static-composer"><span>ソースについて質問</span><Icon name="send" /></div>
+        <section className="surface-card static-session-detail notebook-main">
+          <header className="notebook-header notebook-title-form"><p className="eyebrow section-kicker">Conversation</p><h2 className="notebook-title-input" id="notebookConversationTitle">Local Model Research</h2><span id="notebookSourceMeta">3 sources / Local model harness selected</span></header>
+          <div className="notebook-chat-list" id="notebookChatList">
+            <div className="static-message from-assistant">選択中のSourceに基づいて質問できます。回答生成処理は後で接続します。</div>
+          </div>
+          <div className="static-composer notebook-composer"><span>ソースについて質問</span><Icon name="send" /></div>
         </section>
-        <aside className="surface-card static-side-panel">
-          <div className="static-panel-heading"><p className="eyebrow">Sources</p><button className="round-button" type="button" disabled aria-label="Add source"><Icon name="plus" /></button></div>
-          {active.sources.map((source) => {
-            const [title, meta] = source.split(' / ');
-            return <div key={source} className="static-list-item"><strong>{title}</strong><span>{meta}</span></div>;
-          })}
+        <aside className="surface-card static-side-panel notebook-sources">
+          <div className="static-panel-heading"><p className="eyebrow section-kicker">Sources</p><button className="round-button" id="newSourceButton" type="button" disabled aria-label="Add source"><Icon name="plus" /></button></div>
+          <div className="source-list" id="sourceList">
+            {active.sources.map((source) => {
+              const [title, meta] = source.split(' / ');
+              return <div key={source} className="static-list-item source-item source-select"><strong className="source-title">{title}</strong><span className="source-meta">{meta}</span></div>;
+            })}
+          </div>
         </aside>
       </div>
     </section>
@@ -132,25 +145,31 @@ function NotebookView() {
 }
 
 function InventoryView({ kind, items }: { kind: 'Skill' | 'Tool'; items: string[][] }) {
+  const id = kind.toLowerCase();
+  const titleId = kind === 'Skill' ? 'skillTitle' : 'toolTitle';
+  const searchId = kind === 'Skill' ? 'skillSearch' : 'toolSearch';
+  const buttonId = kind === 'Skill' ? 'newSkillButton' : 'newToolButton';
+  const listId = kind === 'Skill' ? 'skillList' : 'toolList';
   return (
-    <section className="page static-view skill-view">
+    <section className="page static-view skill-view view" id={id} data-view={id} aria-labelledby={titleId}>
       <div className="skill-shell">
         <header className="skill-heading">
-          <div><p className="eyebrow">Capabilities</p><h1>{kind}</h1></div>
+          <div><p className="eyebrow section-kicker">Capabilities</p><h1 id={titleId}>{kind}</h1></div>
           <div className="skill-toolbar">
-            <input className="skill-search" type="search" placeholder={`Search ${kind.toLowerCase()}s`} disabled />
-            <button className="round-button" type="button" disabled aria-label={`Add ${kind}`}><Icon name="plus" /></button>
+            <input className="skill-search" id={searchId} type="search" placeholder={`Search ${kind.toLowerCase()}s`} disabled />
+            <button className="round-button" id={buttonId} type="button" disabled aria-label={`Add ${kind}`}><Icon name="plus" /></button>
           </div>
         </header>
-        <div className="skill-grid">
+        <div className="skill-grid" id={listId}>
           {items.map(([name, scope, description]) => (
             <article key={name} className="skill-card">
               <div className="skill-card-head">
                 <span className="skill-card-icon"><Icon name={kind === 'Skill' ? 'skill' : 'tool'} /></span>
-                <div><p>{scope}</p><h2>{name}</h2></div>
+                <div className="skill-card-title"><p className="skill-card-meta">{scope}</p><h2>{name}</h2></div>
               </div>
-              <p>{description}</p>
-              <footer><span>Enabled</span><button type="button" disabled><Icon name="trash" /></button></footer>
+              <p className="skill-card-description">{description}</p>
+              <code className="skill-card-path">Static migration shell</code>
+              <footer className="skill-card-foot"><span className="skill-chip-list"><span className="skill-chip">Enabled</span></span><button className="session-delete skill-switch" type="button" disabled><Icon name="trash" /></button></footer>
             </article>
           ))}
         </div>
@@ -161,13 +180,14 @@ function InventoryView({ kind, items }: { kind: 'Skill' | 'Tool'; items: string[
 
 function SimpleStaticView({ view }: { view: 'automation' | 'knowledge' }) {
   const title = view === 'automation' ? 'Automation' : 'Knowledge';
+  const titleId = view === 'automation' ? 'automationTitle' : 'knowledgeTitle';
   const items = view === 'automation'
     ? ['PR hygiene', 'Runtime benchmark', 'UI migration']
     : ['Project notes', 'Runtime docs', 'Model tuning'];
   return (
-    <section className={`page static-view static-${view}`}>
+    <section className={`page static-view static-${view} view`} id={view} data-view={view} aria-labelledby={titleId}>
       <div className="page-heading">
-        <div><p className="eyebrow">{view === 'automation' ? 'Queue' : 'Memory'}</p><h1>{title}</h1></div>
+        <div><p className="eyebrow section-kicker">{view === 'automation' ? 'Queue' : 'Memory'}</p><h1 id={titleId}>{title}</h1></div>
         <span className="state-badge">Dummy</span>
       </div>
       <div className="static-grid">

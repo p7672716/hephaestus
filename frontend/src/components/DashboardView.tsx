@@ -57,24 +57,24 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
   };
 
   return (
-    <section className="page dashboard-page">
-      <div className="page-heading">
-        <div><p className="eyebrow">Local AI control plane</p><h1>Dashboard</h1></div>
+    <section className="page dashboard-page dashboard view" id="dashboard" data-view="dashboard" aria-labelledby="dashboardTitle">
+      <div className="page-heading dashboard-heading">
+        <div><p className="eyebrow">Local AI control plane</p><h1 id="dashboardTitle">Dashboard</h1></div>
         <span className={`state-badge state-${runtime.state}`}>{runtime.state}</span>
       </div>
-      <div className="metric-grid">
-        <article><span>CPU Load</span><strong>90%</strong><div className="meter"><span style={{ width: '90%' }} /></div><small>12th Gen Intel Core i5-12400</small></article>
-        <article><span>Memory</span><strong>68%</strong><div className="meter"><span style={{ width: '68%' }} /></div><small>21.7 GB used / 31.7 GB</small></article>
-        <article><span>Primary Disk</span><strong>53%</strong><div className="meter"><span style={{ width: '53%' }} /></div><small>C: 225.8 GB free / 475.9 GB</small></article>
-        <article><span>Sessions</span><strong>{sessions.length}</strong><small>Stored in this browser</small></article>
+      <div className="metric-grid resource-grid">
+        <article className="metric-card"><span className="metric-topline">CPU Load</span><strong>90%</strong><div className="meter"><span style={{ width: '90%' }} /></div><small>12th Gen Intel Core i5-12400</small></article>
+        <article className="metric-card"><span className="metric-topline">Memory</span><strong>68%</strong><div className="meter"><span style={{ width: '68%' }} /></div><small>21.7 GB used / 31.7 GB</small></article>
+        <article className="metric-card"><span className="metric-topline">Primary Disk</span><strong>53%</strong><div className="meter"><span style={{ width: '53%' }} /></div><small>C: 225.8 GB free / 475.9 GB</small></article>
+        <article className="metric-card"><span className="metric-topline">Sessions</span><strong>{sessions.length}</strong><small>Stored in this browser</small></article>
       </div>
-      <div className="dashboard-columns">
-        <article className="surface-card model-slot-card">
-          <div className="page-heading">
+      <div className="dashboard-columns queue-grid">
+        <article className="surface-card system-panel model-slot-card model-state-panel">
+          <div className="page-heading queue-panel-heading">
             <h2>Model Slot</h2>
-            <span className={`state-badge state-${runtime.state}`}>{running ? 'busy' : runtime.state}</span>
+            <span className={`state-badge status-pill state-${runtime.state}${running ? ' is-busy' : ''}`} id="modelSlotStatus">{running ? 'busy' : runtime.state}</span>
           </div>
-          <div className="inventory-list">
+          <div className="inventory-list" id="modelSlotDetails">
             <div><strong>Resident model</strong><span>{activeLabel}</span></div>
             <div><strong>Provider</strong><span>{runtime.provider ?? 'auto'}</span></div>
             <div><strong>Acceleration</strong><span>{runtime.acceleration ?? 'Not running'}</span></div>
@@ -84,16 +84,18 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
             <div><strong>Elapsed</strong><span>{running?.elapsed ?? '--:--'}</span></div>
             <div><strong>Policy</strong><span>{runtime.mock ? 'Mock stream, single resident model' : 'Single resident model, queued execution'}</span></div>
           </div>
-          {running && <button className="primary-button" type="button" onClick={() => updateTask(running.id, 'stopped')}>Stop task</button>}
-        </article>
-        <article className="surface-card queue-card">
-          <div className="page-heading">
-            <h2>Queue</h2>
-            <span className="state-badge">{waiting.length} waiting / {stopped.length} stopped</span>
+          <div className="model-slot-actions" id="modelSlotActions">
+            {running && <button className="primary-button" type="button" onClick={() => updateTask(running.id, 'stopped')}>Stop task</button>}
           </div>
-          <ol className="task-queue">
+        </article>
+        <article className="surface-card system-panel queue-card task-queue-panel">
+          <div className="page-heading queue-panel-heading">
+            <h2>Queue</h2>
+            <span className="state-badge queue-count" id="queueCount">{waiting.length} waiting / {stopped.length} stopped</span>
+          </div>
+          <ol className="task-queue" id="taskQueueList">
             {running && <QueueItem task={running} label="Now" onStart={() => updateTask(running.id, 'running')} onStop={() => updateTask(running.id, 'stopped')} onDelete={() => removeTask(running.id)} onRequeue={() => requeueTask(running.id)} />}
-            {!running && <li className="task-queue-item is-placeholder"><span className="queue-drag-spacer" /><span className="queue-rank">Now</span><div><strong>No running task</strong><small>Model slot is idle</small></div></li>}
+            {!running && <li className="task-queue-item task-queue-empty is-placeholder"><span className="queue-drag-spacer" /><span className="queue-rank">Now</span><div><strong>No running task</strong><small>Model slot is idle</small></div></li>}
             {waiting.map((task, index) => (
               <QueueItem
                 key={task.id}
@@ -128,8 +130,8 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
           </ol>
         </article>
       </div>
-      <div className="dashboard-columns">
-        <article className="surface-card">
+      <div className="dashboard-columns system-grid">
+        <article className="surface-card system-panel">
           <p className="eyebrow">Prepared models</p>
           <h2>Runtime inventory</h2>
           <div className="inventory-list">
@@ -138,7 +140,7 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
             ))}
           </div>
         </article>
-        <article className="surface-card">
+        <article className="surface-card system-panel">
           <p className="eyebrow">Recent activity</p>
           <h2>Conversations</h2>
           <div className="inventory-list">
