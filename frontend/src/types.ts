@@ -83,3 +83,9 @@ export interface StreamEventData {
   message?: string;
   metrics?: MessageMetrics;
 }
+
+export interface UserSettings {
+  defaultModelMode: ModelMode;
+  defaultReasoningEnabled: boolean;
+  uiScale: number;
+}

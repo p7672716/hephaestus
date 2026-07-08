@@ -3,6 +3,7 @@ import type { RuntimeInfo } from '../types';
 interface RuntimeBarProps {
   runtime: RuntimeInfo;
   generating: boolean;
+  reasoningEnabled: boolean;
   dark: boolean;
   onToggleTheme: () => void;
   onToggleSidebar: () => void;
@@ -35,6 +36,7 @@ export function RuntimeBar(props: RuntimeBarProps) {
         <span>{runtimeState(props.runtime, props.generating)}</span>
         <strong>{label}</strong>
         {props.runtime.acceleration && <small>{props.runtime.acceleration}</small>}
+        <small>{props.reasoningEnabled ? 'Reasoning ON' : 'Reasoning OFF'}</small>
         <button type="button" onClick={props.onStop} disabled={!props.generating && !props.runtime.active_model_id}>■</button>
         <button type="button" onClick={props.onResume} disabled={props.generating || props.runtime.state === 'starting'}>▶</button>
       </div>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from '../api';
-import type { ChatMessage, ChatSession, MessageMetadata, ModelMode, StreamEventData } from '../types';
+import type { ChatMessage, ChatSession, MessageMetadata, ModelMode, StreamEventData, UserSettings } from '../types';
 
 const STORAGE_KEY = 'hephaestus-react-chat-v1';
 const modelLabels: Record<Exclude<ModelMode, 'auto'>, string> = {
@@ -8,24 +8,35 @@ const modelLabels: Record<Exclude<ModelMode, 'auto'>, string> = {
   ornith: 'Ornith',
 };
 
-function createSession(): ChatSession {
+function createSession(settings?: UserSettings): ChatSession {
   const now = Date.now();
   return {
     id: crypto.randomUUID(),
     title: 'New chat',
-    modelMode: 'auto',
-    reasoningEnabled: false,
+    modelMode: settings?.defaultModelMode ?? 'auto',
+    reasoningEnabled: settings?.defaultReasoningEnabled ?? false,
     updatedAt: now,
     messages: [],
   };
 }
 
-function loadSessions(): ChatSession[] {
+function normalizeSession(session: ChatSession, settings?: UserSettings): ChatSession {
+  return {
+    ...session,
+    modelMode: session.modelMode ?? settings?.defaultModelMode ?? 'auto',
+    reasoningEnabled: session.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false,
+    messages: session.messages ?? [],
+  };
+}
+
+function loadSessions(settings?: UserSettings): ChatSession[] {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as ChatSession[];
-    return Array.isArray(saved) && saved.length ? saved : [createSession()];
+    return Array.isArray(saved) && saved.length
+      ? saved.map((session) => normalizeSession(session, settings))
+      : [createSession(settings)];
   } catch {
-    return [createSession()];
+    return [createSession(settings)];
   }
 }
 
@@ -46,8 +57,8 @@ function updateMessage(
   );
 }
 
-export function useChat() {
-  const [sessions, setSessions] = useState<ChatSession[]>(loadSessions);
+export function useChat(settings?: UserSettings) {
+  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions(settings));
   const [activeId, setActiveId] = useState(() => sessions[0]?.id ?? '');
   const abortRef = useRef<AbortController | null>(null);
   const [streaming, setStreaming] = useState(false);
@@ -62,18 +73,18 @@ export function useChat() {
   }, [sessions]);
 
   const addSession = useCallback(() => {
-    const session = createSession();
+    const session = createSession(settings);
     setSessions((current) => [session, ...current]);
     setActiveId(session.id);
-  }, []);
+  }, [settings]);
 
   const deleteSession = useCallback((sessionId: string) => {
     setSessions((current) => {
       const next = current.filter((session) => session.id !== sessionId);
-      return next.length ? next : [createSession()];
+      return next.length ? next : [createSession(settings)];
     });
     setActiveId((current) => (current === sessionId ? '' : current));
-  }, []);
+  }, [settings]);
 
   useEffect(() => {
     if (!sessions.some((session) => session.id === activeId)) setActiveId(sessions[0]?.id ?? '');

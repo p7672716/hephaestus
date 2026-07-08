@@ -27,5 +27,11 @@ export function useAuth() {
     [refresh],
   );
 
-  return { status, error, login, refresh };
+  const regenerateToken = useCallback(async () => {
+    const result = await api.regenerateToken();
+    await refresh();
+    return result.token;
+  }, [refresh]);
+
+  return { status, error, login, refresh, regenerateToken };
 }

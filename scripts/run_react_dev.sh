@@ -20,7 +20,18 @@ fi
 cd "$ROOT"
 "$PYTHON" -m uvicorn hephaestus_server.app:app --host 127.0.0.1 --port 8787 &
 BACKEND_PID=$!
-trap 'kill "$BACKEND_PID" 2>/dev/null || true' EXIT INT TERM
+FRONTEND_PID=""
+cleanup() {
+  code=$?
+  [ -n "$FRONTEND_PID" ] && kill "$FRONTEND_PID" 2>/dev/null || true
+  kill "$BACKEND_PID" 2>/dev/null || true
+  wait "$BACKEND_PID" 2>/dev/null || true
+  [ -n "$FRONTEND_PID" ] && wait "$FRONTEND_PID" 2>/dev/null || true
+  exit "$code"
+}
+trap cleanup EXIT INT TERM
 
 cd "$ROOT/frontend"
-exec npm run dev
+npm run dev &
+FRONTEND_PID=$!
+wait "$FRONTEND_PID"

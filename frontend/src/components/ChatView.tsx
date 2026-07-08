@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { MarkdownText } from './MarkdownText';
 import type { ChatSession, ModelMode } from '../types';
 
 interface ChatViewProps {
@@ -17,6 +18,24 @@ interface ChatViewProps {
 
 function formatTime(value: number) {
   return new Intl.DateTimeFormat('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false }).format(value);
+}
+
+function splitThinking(value: string) {
+  const source = String(value || '');
+  const tagged = /<think>([\s\S]*?)<\/think>/i.exec(source);
+  if (tagged) return { thinking: tagged[1].trim(), answer: source.replace(tagged[0], '').trim() };
+  const openMatch = /<think>/i.exec(source);
+  if (openMatch) return { thinking: source.slice(openMatch.index + openMatch[0].length).trim(), answer: source.slice(0, openMatch.index).trim() };
+  const closeIndex = source.toLowerCase().indexOf('</think>');
+  if (closeIndex >= 0) return { thinking: source.slice(0, closeIndex).trim(), answer: source.slice(closeIndex + 8).trim() };
+  const finalMatch = /\n\s*(?:final answer|回答|最終回答)\s*[:：]\s*/i.exec(source);
+  if (/^\s*(?:here'?s a )?thinking process\s*[:：]/i.test(source) && finalMatch) {
+    return { thinking: source.slice(0, finalMatch.index).trim(), answer: source.slice(finalMatch.index + finalMatch[0].length).trim() };
+  }
+  if (/^\s*(?:here'?s a )?thinking process\s*[:：]/i.test(source)) {
+    return { thinking: source.replace(/^\s*(?:here'?s a )?thinking process\s*[:：]\s*/i, '').trim(), answer: '' };
+  }
+  return { thinking: '', answer: source };
 }
 
 export function ChatView(props: ChatViewProps) {
@@ -91,23 +110,28 @@ export function ChatView(props: ChatViewProps) {
               <p>Auto routing sends coding work to Ornith and analysis work to Agents-A1.</p>
             </div>
           )}
-          {props.activeSession?.messages.map((message) => (
-            <article key={message.id} className={`message from-${message.role}`}>
-              <header>
-                <strong>{message.role === 'user' ? 'You' : message.metadata?.selectedModelLabel ?? 'Hephaestus'}</strong>
-                <span>{formatTime(message.createdAt)}</span>
-                {message.metadata?.provider && <span>{message.metadata.provider}</span>}
-                {message.metrics?.tokensPerSecond && <span>{message.metrics.tokensPerSecond.toFixed(1)} t/s</span>}
-              </header>
-              {message.metadata?.progress && (
-                <details className="reasoning-block">
-                  <summary>Reasoning progress</summary>
-                  <pre>{message.metadata.progress}</pre>
-                </details>
-              )}
-              <div className="message-content">{message.content || (message.streaming ? 'Generating…' : '')}</div>
-            </article>
-          ))}
+          {props.activeSession?.messages.map((message) => {
+            const parts = message.role === 'assistant' ? splitThinking(message.content) : { thinking: '', answer: message.content };
+            const progress = message.metadata?.progress || parts.thinking;
+            const answer = parts.answer || (message.streaming && !progress ? 'Generating…' : '');
+            return (
+              <article key={message.id} className={`message from-${message.role}`}>
+                <header>
+                  <strong>{message.role === 'user' ? 'You' : message.metadata?.selectedModelLabel ?? 'Hephaestus'}</strong>
+                  <span>{formatTime(message.createdAt)}</span>
+                  {message.metadata?.provider && <span>{message.metadata.provider}</span>}
+                  {message.metrics?.tokensPerSecond && <span>{message.metrics.tokensPerSecond.toFixed(1)} t/s</span>}
+                </header>
+                {progress && (
+                  <details className="reasoning-block" open={message.streaming}>
+                    <summary>{message.streaming ? '進捗を表示中' : '進捗'}</summary>
+                    <div className="reasoning-text"><MarkdownText text={progress} /></div>
+                  </details>
+                )}
+                {answer && <div className="message-content"><MarkdownText text={answer} /></div>}
+              </article>
+            );
+          })}
           <div ref={messageEndRef} />
         </div>
 

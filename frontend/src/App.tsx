@@ -4,10 +4,12 @@ import { ChatView } from './components/ChatView';
 import { DashboardView } from './components/DashboardView';
 import { PlaceholderView } from './components/PlaceholderView';
 import { RuntimeBar } from './components/RuntimeBar';
+import { SettingView } from './components/SettingView';
 import { Sidebar } from './components/Sidebar';
 import { useAuth } from './hooks/useAuth';
 import { useChat } from './hooks/useChat';
 import { useRuntime } from './hooks/useRuntime';
+import { useSettings } from './hooks/useSettings';
 import type { ViewId } from './types';
 
 const THEME_KEY = 'hephaestus-theme';
@@ -19,7 +21,8 @@ export default function App() {
   const auth = useAuth();
   const authenticated = Boolean(auth.status && (!auth.status.required || auth.status.authenticated));
   const runtime = useRuntime(authenticated);
-  const chat = useChat();
+  const settings = useSettings();
+  const chat = useChat(settings.settings);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -28,12 +31,18 @@ export default function App() {
 
   async function resumeRuntime() {
     const selected = chat.activeSession?.modelMode;
+    const defaultModel = settings.settings.defaultModelMode === 'auto' ? 'agents-a1' : settings.settings.defaultModelMode;
     const model = selected && selected !== 'auto'
       ? selected
       : runtime.runtime.active_model_id === 'ornith'
         ? 'ornith'
-        : 'agents-a1';
+        : defaultModel;
     await runtime.select(model);
+  }
+
+  async function stopGeneration() {
+    chat.stop();
+    await runtime.stop();
   }
 
   if (!auth.status) {
@@ -54,10 +63,11 @@ export default function App() {
       <RuntimeBar
         runtime={runtime.runtime}
         generating={chat.streaming}
+        reasoningEnabled={chat.activeSession?.reasoningEnabled ?? settings.settings.defaultReasoningEnabled}
         dark={dark}
         onToggleTheme={() => setDark((value) => !value)}
         onToggleSidebar={() => setCollapsed((value) => !value)}
-        onStop={chat.streaming ? chat.stop : () => void runtime.stop()}
+        onStop={chat.streaming ? stopGeneration : () => void runtime.stop()}
         onResume={() => void resumeRuntime()}
       />
       <div className="body-shell">
@@ -76,10 +86,20 @@ export default function App() {
               onModelMode={chat.setModelMode}
               onReasoning={chat.setReasoningEnabled}
               onSend={chat.send}
-              onStop={chat.stop}
+              onStop={() => void stopGeneration()}
             />
           )}
-          {view !== 'dashboard' && view !== 'chat' && <PlaceholderView view={view} />}
+          {view === 'setting' && (
+            <SettingView
+              authStatus={auth.status}
+              settings={settings.settings}
+              onDefaultModelMode={settings.setDefaultModelMode}
+              onDefaultReasoning={settings.setDefaultReasoningEnabled}
+              onUiScale={settings.setUiScale}
+              onRegenerateToken={auth.regenerateToken}
+            />
+          )}
+          {view !== 'dashboard' && view !== 'chat' && view !== 'setting' && <PlaceholderView view={view} />}
         </main>
       </div>
     </div>
