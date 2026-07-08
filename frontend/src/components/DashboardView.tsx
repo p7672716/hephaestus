@@ -6,13 +6,21 @@ interface DashboardViewProps {
   sessions: ChatSession[];
 }
 
+interface QueueTask {
+  id: string;
+  title: string;
+  meta: string;
+  state: string;
+}
+
 export function DashboardView({ runtime, sessions }: DashboardViewProps) {
   const activeLabel = runtime.starting_model_label ?? runtime.active_model_label ?? 'None';
-  const [queue, setQueue] = useState([
+  const [queue, setQueue] = useState<QueueTask[]>([
     { id: 'task-notebook-answer', title: 'Notebook source answer', meta: 'Local Model Research', state: 'waiting' },
     { id: 'task-chat-branch', title: 'Chat branch response', meta: 'Local harness', state: 'waiting' },
     { id: 'task-knowledge-index', title: 'Knowledge indexing', meta: 'Harness docs', state: 'waiting' },
   ]);
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const running = queue.find((task) => task.state === 'running');
   const waiting = queue.filter((task) => task.state === 'waiting');
   const stopped = queue.filter((task) => task.state === 'stopped');
@@ -20,6 +28,17 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
     task.id === id ? { ...task, state } : task.state === 'running' && state === 'running' ? { ...task, state: 'stopped' } : task
   )));
   const removeTask = (id: string) => setQueue((current) => current.filter((task) => task.id !== id));
+  const moveWaitingTask = (targetId: string) => {
+    if (!draggedTaskId || draggedTaskId === targetId) return;
+    setQueue((current) => {
+      const dragged = current.find((task) => task.id === draggedTaskId && task.state === 'waiting');
+      if (!dragged) return current;
+      const without = current.filter((task) => task.id !== draggedTaskId);
+      const targetIndex = without.findIndex((task) => task.id === targetId);
+      if (targetIndex < 0) return current;
+      return [...without.slice(0, targetIndex), dragged, ...without.slice(targetIndex)];
+    });
+  };
 
   return (
     <section className="page dashboard-page">
@@ -56,7 +75,20 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
           <ol className="task-queue">
             {running && <QueueItem task={running} label="Now" onStart={() => updateTask(running.id, 'running')} onStop={() => updateTask(running.id, 'stopped')} onDelete={() => removeTask(running.id)} />}
             {!running && <li className="task-queue-item is-placeholder"><span>Now</span><strong>No running task</strong><small>Model slot is idle</small></li>}
-            {waiting.map((task, index) => <QueueItem key={task.id} task={task} label={String(index + 1).padStart(2, '0')} onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} />)}
+            {waiting.map((task, index) => (
+              <QueueItem
+                key={task.id}
+                task={task}
+                label={String(index + 1).padStart(2, '0')}
+                dragging={draggedTaskId === task.id}
+                onDragStart={() => setDraggedTaskId(task.id)}
+                onDragOver={() => moveWaitingTask(task.id)}
+                onDragEnd={() => setDraggedTaskId(null)}
+                onStart={() => updateTask(task.id, 'running')}
+                onStop={() => updateTask(task.id, 'stopped')}
+                onDelete={() => removeTask(task.id)}
+              />
+            ))}
             {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} />)}
           </ol>
         </article>
@@ -87,14 +119,33 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
 }
 
 function QueueItem(props: {
-  task: { id: string; title: string; meta: string; state: string };
+  task: QueueTask;
   label: string;
+  dragging?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: () => void;
+  onDragEnd?: () => void;
   onStart: () => void;
   onStop: () => void;
   onDelete: () => void;
 }) {
   return (
-    <li className={`task-queue-item is-${props.task.state}`}>
+    <li
+      className={`task-queue-item is-${props.task.state}${props.dragging ? ' is-dragging' : ''}`}
+      draggable={props.task.state === 'waiting'}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', props.task.id);
+        props.onDragStart?.();
+      }}
+      onDragOver={(event) => {
+        if (props.task.state !== 'waiting') return;
+        event.preventDefault();
+        props.onDragOver?.();
+      }}
+      onDrop={(event) => event.preventDefault()}
+      onDragEnd={props.onDragEnd}
+    >
       <span>{props.label}</span>
       <div><strong>{props.task.title}</strong><small>{props.task.meta} / {props.task.state}</small></div>
       <div className="queue-actions">

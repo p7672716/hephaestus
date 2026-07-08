@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { type DragEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { MarkdownText } from './MarkdownText';
 import type { ChatFolder, ChatSession, ModelMode } from '../types';
 
@@ -54,6 +54,7 @@ export function ChatView(props: ChatViewProps) {
   const [skillText, setSkillText] = useState('');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [draggingSessionId, setDraggingSessionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -81,6 +82,13 @@ export function ChatView(props: ChatViewProps) {
 
   const foldersById = new Map(props.folders.map((folder) => [folder.id, folder]));
   const looseSessions = props.sessions.filter((session) => !session.folderId || !foldersById.has(session.folderId));
+  const dropSession = (event: DragEvent, folderId: string | null) => {
+    event.preventDefault();
+    const sessionId = event.dataTransfer.getData('text/plain') || draggingSessionId;
+    if (!sessionId) return;
+    props.onAssignSessionFolder(sessionId, folderId);
+    setDraggingSessionId(null);
+  };
 
   return (
     <section className="chat-layout">
@@ -97,7 +105,12 @@ export function ChatView(props: ChatViewProps) {
             const open = props.expandedFolderId === folder.id;
             const children = props.sessions.filter((session) => session.folderId === folder.id);
             return (
-              <div key={folder.id} className="folder-row">
+              <div
+                key={folder.id}
+                className={draggingSessionId ? 'folder-row is-drop-target' : 'folder-row'}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => dropSession(event, folder.id)}
+              >
                 <div className="session-row">
                   <button type="button" onClick={() => props.onToggleFolder(open ? null : folder.id)}>
                     <input
@@ -113,14 +126,36 @@ export function ChatView(props: ChatViewProps) {
                 {open && (
                   <div className="folder-sessions">
                     {children.length ? children.map((session) => (
-                      <SessionRow key={session.id} session={session} props={props} />
+                      <SessionRow
+                        key={session.id}
+                        session={session}
+                        dragging={draggingSessionId === session.id}
+                        onDragStart={() => setDraggingSessionId(session.id)}
+                        onDragEnd={() => setDraggingSessionId(null)}
+                        props={props}
+                      />
                     )) : <p className="empty-state">セッションなし</p>}
                   </div>
                 )}
               </div>
             );
           })}
-          {looseSessions.map((session) => <SessionRow key={session.id} session={session} props={props} />)}
+          <div
+            className={draggingSessionId ? 'loose-session-drop is-drop-target' : 'loose-session-drop'}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => dropSession(event, null)}
+          >
+            {looseSessions.map((session) => (
+              <SessionRow
+                key={session.id}
+                session={session}
+                dragging={draggingSessionId === session.id}
+                onDragStart={() => setDraggingSessionId(session.id)}
+                onDragEnd={() => setDraggingSessionId(null)}
+                props={props}
+              />
+            ))}
+          </div>
         </div>
       </aside>
 
@@ -273,9 +308,30 @@ export function ChatView(props: ChatViewProps) {
   );
 }
 
-function SessionRow({ session, props }: { session: ChatSession; props: ChatViewProps }) {
+function SessionRow({
+  session,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  props,
+}: {
+  session: ChatSession;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  props: ChatViewProps;
+}) {
   return (
-    <div className={session.id === props.activeId ? 'session-row is-active' : 'session-row'}>
+    <div
+      className={`${session.id === props.activeId ? 'session-row is-active' : 'session-row'}${dragging ? ' is-dragging' : ''}`}
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', session.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+    >
       <button type="button" onClick={() => props.onSelectSession(session.id)}>
         <input
           aria-label={`${session.title} name`}
