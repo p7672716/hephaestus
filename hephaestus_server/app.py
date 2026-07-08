@@ -15,7 +15,9 @@ from .runtime import RuntimeManager
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-UI_ROOT = PROJECT_ROOT / "Hephaestus_UI"
+REACT_UI_ROOT = PROJECT_ROOT / "frontend" / "dist"
+LEGACY_UI_ROOT = PROJECT_ROOT / "Hephaestus_UI"
+UI_ROOT = REACT_UI_ROOT if (REACT_UI_ROOT / "index.html").exists() else LEGACY_UI_ROOT
 auth = AuthManager(PROJECT_ROOT)
 runtime = RuntimeManager(PROJECT_ROOT)
 
