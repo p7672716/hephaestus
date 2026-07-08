@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ViewId } from '../types';
 import { Icon } from './Icon';
 
@@ -45,6 +46,12 @@ const tools = [
   ['image_gen', 'asset', 'アイコンや画像素材を生成するためのツール。'],
 ];
 
+const linkCandidates = [
+  ['Runtime tuning notes', 'Ornith / 12 messages'],
+  ['React migration review', 'Agents-A1 / 8 messages'],
+  ['External access setup', 'Auto / 5 messages'],
+];
+
 export function PlaceholderView({ view }: { view: StaticViewId }) {
   if (view === 'coding') return <CodingView />;
   if (view === 'notebook') return <NotebookView />;
@@ -55,6 +62,7 @@ export function PlaceholderView({ view }: { view: StaticViewId }) {
 
 function CodingView() {
   const active = projects[0];
+  const [linkFlowOpen, setLinkFlowOpen] = useState(false);
   return (
     <section className="page static-view coding-view view" id="coding" data-view="coding" aria-labelledby="codingTitle">
       <header className="view-heading"><p className="eyebrow section-kicker">Workspace</p><h1 id="codingTitle">Coding</h1></header>
@@ -72,9 +80,23 @@ function CodingView() {
                 {index === 0 && (
                   <div className="static-accordion project-accordion">
                     <div className="project-accordion-inner">
-                    <p>Coding</p>
+                    <div className="session-group-row">
+                      <p className="session-group-title">Coding</p>
+                      <button className="new-session coding-session-create" type="button" disabled aria-label={`${project.name}にCodingセッションを追加`}><Icon name="plus" /></button>
+                    </div>
                     {project.sessions.map((session) => <button key={session} className="accordion-session coding-session-item session-item coding-session-select session-select" type="button" disabled><span className="coding-session-title">{session}</span></button>)}
-                    <p>Linked Chat</p>
+                    <div className="session-group-row">
+                      <p className="session-group-title">Linked Chat</p>
+                      <button
+                        className="new-session link-flow-toggle"
+                        type="button"
+                        aria-label={`${project.name}にChatをリンク`}
+                        aria-expanded={linkFlowOpen}
+                        onClick={() => setLinkFlowOpen((open) => !open)}
+                      >
+                        <Icon name="plus" />
+                      </button>
+                    </div>
                     {project.linked.map((session) => <button key={session} className="accordion-session coding-session-item session-item coding-session-select session-select" type="button" disabled><span className="coding-session-title">{session}</span></button>)}
                     </div>
                   </div>
@@ -84,7 +106,7 @@ function CodingView() {
           </div>
         </aside>
         <section className="surface-card static-workbench coding-workbench">
-          <header className="static-workspace-header workspace-header workspace-settings">
+          <header className="static-workspace-header workspace-header">
             <div><p className="eyebrow section-kicker">Project</p><h2 id="codingProjectTitle">{active.name}</h2></div>
             <p id="codingProjectMeta" hidden>{active.updated}</p>
             <span className="state-badge">Dummy</span>
@@ -101,12 +123,41 @@ function CodingView() {
               <header className="detail-header"><div><p className="eyebrow section-kicker">Session</p><h2 className="coding-session-title" id="codingSessionTitle">Chat UI build</h2></div><p id="codingSessionMeta" hidden>Dummy</p></header>
               <div className="coding-session-body detail-block" id="codingSessionBody">
                 <div className="static-message from-assistant">Workspace ready. Describe the code change to make in this project.</div>
+                <form className="workspace-settings">
+                  <label className="setting-row">
+                    <span className="detail-label">Directory</span>
+                    <input className="setting-input" value="/home/user/hephaestus" readOnly />
+                  </label>
+                  <button className="setting-submit" type="button" disabled>Apply</button>
+                </form>
               </div>
               <div className="static-composer coding-chat-composer"><span>このセッションに送るメッセージ</span><Icon name="send" /></div>
             </section>
           </div>
         </section>
       </div>
+      {linkFlowOpen && (
+        <div className="link-flow-backdrop" onClick={() => setLinkFlowOpen(false)}>
+          <section className="link-flow" aria-label={`${active.name}にリンクするChatを選択`} onClick={(event) => event.stopPropagation()}>
+            <header className="link-flow-header">
+              <div><p className="section-kicker">Linked Chat</p><h3>{active.name}</h3></div>
+              <p className="link-flow-count">{linkCandidates.length} / {linkCandidates.length} linkable</p>
+            </header>
+            <input className="link-flow-search" type="search" aria-label="リンク可能なChatを検索" placeholder="タイトル・内容を検索" disabled />
+            <div className="link-flow-list">
+              {linkCandidates.map(([title, meta]) => (
+                <div className="link-candidate session-item" key={title}>
+                  <button className="coding-session-select session-select" type="button" disabled aria-label={`${title}をリンク`}>
+                    <span className="coding-session-title session-title">{title}</span>
+                    <span>{meta}</span>
+                  </button>
+                  <button className="link-action" type="button" disabled aria-label={`${title}をリンク`}><Icon name="link" /></button>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
