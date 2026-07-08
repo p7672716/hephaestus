@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ChatSession, RuntimeInfo } from '../types';
 
 interface DashboardViewProps {
@@ -7,6 +8,19 @@ interface DashboardViewProps {
 
 export function DashboardView({ runtime, sessions }: DashboardViewProps) {
   const activeLabel = runtime.starting_model_label ?? runtime.active_model_label ?? 'None';
+  const [queue, setQueue] = useState([
+    { id: 'task-notebook-answer', title: 'Notebook source answer', meta: 'Local Model Research', state: 'waiting' },
+    { id: 'task-chat-branch', title: 'Chat branch response', meta: 'Local harness', state: 'waiting' },
+    { id: 'task-knowledge-index', title: 'Knowledge indexing', meta: 'Harness docs', state: 'waiting' },
+  ]);
+  const running = queue.find((task) => task.state === 'running');
+  const waiting = queue.filter((task) => task.state === 'waiting');
+  const stopped = queue.filter((task) => task.state === 'stopped');
+  const updateTask = (id: string, state: string) => setQueue((current) => current.map((task) => (
+    task.id === id ? { ...task, state } : task.state === 'running' && state === 'running' ? { ...task, state: 'stopped' } : task
+  )));
+  const removeTask = (id: string) => setQueue((current) => current.filter((task) => task.id !== id));
+
   return (
     <section className="page dashboard-page">
       <div className="page-heading">
@@ -14,10 +28,38 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
         <span className={`state-badge state-${runtime.state}`}>{runtime.state}</span>
       </div>
       <div className="metric-grid">
-        <article><span>Resident model</span><strong>{activeLabel}</strong><small>{runtime.provider ?? 'auto provider'}</small></article>
-        <article><span>Acceleration</span><strong>{runtime.acceleration ?? 'Not running'}</strong><small>Adaptive GPU-layer fallback</small></article>
-        <article><span>Context</span><strong>{runtime.ctx_size ?? '8192'}</strong><small>Batch {runtime.batch_size ?? '512'}</small></article>
+        <article><span>CPU Load</span><strong>90%</strong><div className="meter"><span style={{ width: '90%' }} /></div><small>12th Gen Intel Core i5-12400</small></article>
+        <article><span>Memory</span><strong>68%</strong><div className="meter"><span style={{ width: '68%' }} /></div><small>21.7 GB used / 31.7 GB</small></article>
+        <article><span>Primary Disk</span><strong>53%</strong><div className="meter"><span style={{ width: '53%' }} /></div><small>C: 225.8 GB free / 475.9 GB</small></article>
         <article><span>Sessions</span><strong>{sessions.length}</strong><small>Stored in this browser</small></article>
+      </div>
+      <div className="dashboard-columns">
+        <article className="surface-card model-slot-card">
+          <div className="page-heading">
+            <h2>Model Slot</h2>
+            <span className={`state-badge state-${runtime.state}`}>{running ? 'busy' : runtime.state}</span>
+          </div>
+          <div className="inventory-list">
+            <div><strong>Resident model</strong><span>{activeLabel}</span></div>
+            <div><strong>Provider</strong><span>{runtime.provider ?? 'auto'}</span></div>
+            <div><strong>Acceleration</strong><span>{runtime.acceleration ?? 'Not running'}</span></div>
+            <div><strong>Context</strong><span>{runtime.ctx_size ?? '8192'} / batch {runtime.batch_size ?? '512'}</span></div>
+            <div><strong>Active task</strong><span>{running?.title ?? 'No running task'}</span></div>
+          </div>
+          {running && <button className="primary-button" type="button" onClick={() => updateTask(running.id, 'stopped')}>Stop task</button>}
+        </article>
+        <article className="surface-card queue-card">
+          <div className="page-heading">
+            <h2>Queue</h2>
+            <span className="state-badge">{waiting.length} waiting / {stopped.length} stopped</span>
+          </div>
+          <ol className="task-queue">
+            {running && <QueueItem task={running} label="Now" onStart={() => updateTask(running.id, 'running')} onStop={() => updateTask(running.id, 'stopped')} onDelete={() => removeTask(running.id)} />}
+            {!running && <li className="task-queue-item is-placeholder"><span>Now</span><strong>No running task</strong><small>Model slot is idle</small></li>}
+            {waiting.map((task, index) => <QueueItem key={task.id} task={task} label={String(index + 1).padStart(2, '0')} onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} />)}
+            {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} />)}
+          </ol>
+        </article>
       </div>
       <div className="dashboard-columns">
         <article className="surface-card">
@@ -41,5 +83,26 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
       </div>
       {runtime.last_error && <pre className="error-console">{runtime.last_error}</pre>}
     </section>
+  );
+}
+
+function QueueItem(props: {
+  task: { id: string; title: string; meta: string; state: string };
+  label: string;
+  onStart: () => void;
+  onStop: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li className={`task-queue-item is-${props.task.state}`}>
+      <span>{props.label}</span>
+      <div><strong>{props.task.title}</strong><small>{props.task.meta} / {props.task.state}</small></div>
+      <div className="queue-actions">
+        {props.task.state === 'running'
+          ? <button type="button" onClick={props.onStop}>■</button>
+          : <button type="button" onClick={props.onStart}>▶</button>}
+        <button type="button" onClick={props.onDelete}>×</button>
+      </div>
+    </li>
   );
 }

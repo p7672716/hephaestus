@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from '../api';
-import type { ChatMessage, ChatSession, MessageMetadata, ModelMode, StreamEventData, UserSettings } from '../types';
+import type { ChatFolder, ChatMessage, ChatSession, MessageMetadata, ModelMode, StreamEventData, UserSettings } from '../types';
 
 const STORAGE_KEY = 'hephaestus-react-chat-v1';
 const modelLabels: Record<Exclude<ModelMode, 'auto'>, string> = {
@@ -8,11 +8,19 @@ const modelLabels: Record<Exclude<ModelMode, 'auto'>, string> = {
   ornith: 'Ornith',
 };
 
+interface ChatStore {
+  sessions: ChatSession[];
+  folders: ChatFolder[];
+  activeId: string;
+  expandedFolderId: string | null;
+}
+
 function createSession(settings?: UserSettings): ChatSession {
   const now = Date.now();
   return {
     id: crypto.randomUUID(),
     title: 'New chat',
+    folderId: null,
     modelMode: settings?.defaultModelMode ?? 'auto',
     reasoningEnabled: settings?.defaultReasoningEnabled ?? false,
     updatedAt: now,
@@ -20,23 +28,48 @@ function createSession(settings?: UserSettings): ChatSession {
   };
 }
 
-function normalizeSession(session: ChatSession, settings?: UserSettings): ChatSession {
+function createFolder(): ChatFolder {
+  return { id: crypto.randomUUID(), title: 'New folder', updatedAt: Date.now() };
+}
+
+function normalizeMessage(message: ChatMessage): ChatMessage {
+  const content = message.content ?? message.versions?.[message.versionIndex ?? 0] ?? '';
   return {
-    ...session,
-    modelMode: session.modelMode ?? settings?.defaultModelMode ?? 'auto',
-    reasoningEnabled: session.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false,
-    messages: session.messages ?? [],
+    ...message,
+    id: message.id ?? crypto.randomUUID(),
+    content,
+    versions: message.versions,
+    versionIndex: message.versionIndex ?? 0,
+    versionTimes: message.versionTimes,
   };
 }
 
-function loadSessions(settings?: UserSettings): ChatSession[] {
+function normalizeSession(session: ChatSession, settings?: UserSettings): ChatSession {
+  return {
+    ...session,
+    folderId: session.folderId ?? null,
+    modelMode: session.modelMode ?? settings?.defaultModelMode ?? 'auto',
+    reasoningEnabled: session.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false,
+    messages: (session.messages ?? []).map(normalizeMessage),
+  };
+}
+
+function loadStore(settings?: UserSettings): ChatStore {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as ChatSession[];
-    return Array.isArray(saved) && saved.length
-      ? saved.map((session) => normalizeSession(session, settings))
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Partial<ChatStore> | ChatSession[];
+    const sessions = Array.isArray(saved) ? saved : saved.sessions;
+    const normalized = Array.isArray(sessions) && sessions.length
+      ? sessions.map((session) => normalizeSession(session, settings))
       : [createSession(settings)];
+    return {
+      sessions: normalized,
+      folders: !Array.isArray(saved) && Array.isArray(saved.folders) ? saved.folders : [],
+      activeId: !Array.isArray(saved) && saved.activeId ? saved.activeId : normalized[0]?.id ?? '',
+      expandedFolderId: !Array.isArray(saved) ? saved.expandedFolderId ?? null : null,
+    };
   } catch {
-    return [createSession(settings)];
+    const session = createSession(settings);
+    return { sessions: [session], folders: [], activeId: session.id, expandedFolderId: null };
   }
 }
 
@@ -58,8 +91,12 @@ function updateMessage(
 }
 
 export function useChat(settings?: UserSettings) {
-  const [sessions, setSessions] = useState<ChatSession[]>(() => loadSessions(settings));
-  const [activeId, setActiveId] = useState(() => sessions[0]?.id ?? '');
+  const initial = useRef<ChatStore | null>(null);
+  if (!initial.current) initial.current = loadStore(settings);
+  const [sessions, setSessions] = useState<ChatSession[]>(initial.current.sessions);
+  const [folders, setFolders] = useState<ChatFolder[]>(initial.current.folders);
+  const [activeId, setActiveId] = useState(initial.current.activeId);
+  const [expandedFolderId, setExpandedFolderId] = useState<string | null>(initial.current.expandedFolderId);
   const abortRef = useRef<AbortController | null>(null);
   const [streaming, setStreaming] = useState(false);
   const frameRef = useRef<number | null>(null);
@@ -69,14 +106,20 @@ export function useChat(settings?: UserSettings) {
   const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0];
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
-  }, [sessions]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sessions, folders, activeId, expandedFolderId }));
+  }, [activeId, expandedFolderId, folders, sessions]);
 
   const addSession = useCallback(() => {
     const session = createSession(settings);
     setSessions((current) => [session, ...current]);
     setActiveId(session.id);
   }, [settings]);
+
+  const addFolder = useCallback(() => {
+    const folder = createFolder();
+    setFolders((current) => [folder, ...current]);
+    setExpandedFolderId(folder.id);
+  }, []);
 
   const deleteSession = useCallback((sessionId: string) => {
     setSessions((current) => {
@@ -85,6 +128,37 @@ export function useChat(settings?: UserSettings) {
     });
     setActiveId((current) => (current === sessionId ? '' : current));
   }, [settings]);
+
+  const deleteFolder = useCallback((folderId: string) => {
+    setFolders((current) => current.filter((folder) => folder.id !== folderId));
+    setSessions((current) => current.map((session) => (
+      session.folderId === folderId ? { ...session, folderId: null, updatedAt: Date.now() } : session
+    )));
+    setExpandedFolderId((current) => (current === folderId ? null : current));
+  }, []);
+
+  const renameSession = useCallback((sessionId: string, title: string) => {
+    const next = title.trim();
+    if (!next) return;
+    setSessions((current) => current.map((session) => (
+      session.id === sessionId ? { ...session, title: next, updatedAt: Date.now() } : session
+    )));
+  }, []);
+
+  const renameFolder = useCallback((folderId: string, title: string) => {
+    const next = title.trim();
+    if (!next) return;
+    setFolders((current) => current.map((folder) => (
+      folder.id === folderId ? { ...folder, title: next, updatedAt: Date.now() } : folder
+    )));
+  }, []);
+
+  const assignSessionFolder = useCallback((sessionId: string, folderId: string | null) => {
+    setSessions((current) => current.map((session) => (
+      session.id === sessionId ? { ...session, folderId, updatedAt: Date.now() } : session
+    )));
+    if (folderId) setExpandedFolderId(folderId);
+  }, []);
 
   useEffect(() => {
     if (!sessions.some((session) => session.id === activeId)) setActiveId(sessions[0]?.id ?? '');
@@ -101,6 +175,30 @@ export function useChat(settings?: UserSettings) {
     (reasoningEnabled: boolean) => patchActive({ reasoningEnabled }),
     [patchActive],
   );
+
+  const editMessage = useCallback((sessionId: string, messageId: string, text: string) => {
+    const next = text.trim();
+    if (!next) return;
+    setSessions((current) =>
+      updateMessage(current, sessionId, messageId, (message) => {
+        const versions = message.versions?.length ? [...message.versions] : [message.content];
+        const versionTimes = message.versionTimes?.length ? [...message.versionTimes] : [message.createdAt];
+        versions.push(next);
+        versionTimes.push(Date.now());
+        return { ...message, content: next, versions, versionTimes, versionIndex: versions.length - 1 };
+      }),
+    );
+  }, []);
+
+  const selectMessageVersion = useCallback((sessionId: string, messageId: string, index: number) => {
+    setSessions((current) =>
+      updateMessage(current, sessionId, messageId, (message) => {
+        const versions = message.versions ?? [message.content];
+        const nextIndex = Math.max(0, Math.min(versions.length - 1, index));
+        return { ...message, content: versions[nextIndex], versionIndex: nextIndex };
+      }),
+    );
+  }, []);
 
   const flushPending = useCallback((sessionId: string, messageId: string) => {
     const token = pendingTokenRef.current;
@@ -148,7 +246,7 @@ export function useChat(settings?: UserSettings) {
       current.map((item) =>
         item.id === session.id
           ? {
-              ...item,
+            ...item,
               title: item.messages.length ? item.title : text.trim().slice(0, 36),
               updatedAt: Date.now(),
               messages: nextMessages,
@@ -233,11 +331,21 @@ export function useChat(settings?: UserSettings) {
 
   return {
     sessions,
+    folders,
     activeSession,
     activeId,
+    expandedFolderId,
     setActiveId,
+    setExpandedFolderId,
     addSession,
+    addFolder,
     deleteSession,
+    deleteFolder,
+    renameSession,
+    renameFolder,
+    assignSessionFolder,
+    editMessage,
+    selectMessageVersion,
     setModelMode,
     setReasoningEnabled,
     send,

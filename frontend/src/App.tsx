@@ -77,12 +77,22 @@ export default function App() {
           {view === 'chat' && (
             <ChatView
               sessions={chat.sessions}
+              folders={chat.folders}
               activeSession={chat.activeSession}
               activeId={chat.activeId}
+              expandedFolderId={chat.expandedFolderId}
               streaming={chat.streaming}
               onSelectSession={chat.setActiveId}
+              onToggleFolder={chat.setExpandedFolderId}
               onAddSession={chat.addSession}
+              onAddFolder={chat.addFolder}
               onDeleteSession={chat.deleteSession}
+              onDeleteFolder={chat.deleteFolder}
+              onRenameSession={chat.renameSession}
+              onRenameFolder={chat.renameFolder}
+              onAssignSessionFolder={chat.assignSessionFolder}
+              onEditMessage={chat.editMessage}
+              onSelectMessageVersion={chat.selectMessageVersion}
               onModelMode={chat.setModelMode}
               onReasoning={chat.setReasoningEnabled}
               onSend={chat.send}

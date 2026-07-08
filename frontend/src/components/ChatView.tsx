@@ -1,15 +1,25 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { MarkdownText } from './MarkdownText';
-import type { ChatSession, ModelMode } from '../types';
+import type { ChatFolder, ChatSession, ModelMode } from '../types';
 
 interface ChatViewProps {
   sessions: ChatSession[];
+  folders: ChatFolder[];
   activeSession?: ChatSession;
   activeId: string;
+  expandedFolderId: string | null;
   streaming: boolean;
   onSelectSession: (id: string) => void;
+  onToggleFolder: (id: string | null) => void;
   onAddSession: () => void;
+  onAddFolder: () => void;
   onDeleteSession: (id: string) => void;
+  onDeleteFolder: (id: string) => void;
+  onRenameSession: (id: string, title: string) => void;
+  onRenameFolder: (id: string, title: string) => void;
+  onAssignSessionFolder: (id: string, folderId: string | null) => void;
+  onEditMessage: (sessionId: string, messageId: string, text: string) => void;
+  onSelectMessageVersion: (sessionId: string, messageId: string, index: number) => void;
   onModelMode: (mode: ModelMode) => void;
   onReasoning: (enabled: boolean) => void;
   onSend: (text: string) => Promise<void>;
@@ -40,6 +50,11 @@ function splitThinking(value: string) {
 
 export function ChatView(props: ChatViewProps) {
   const [text, setText] = useState('');
+  const [skillOpen, setSkillOpen] = useState(false);
+  const [skillText, setSkillText] = useState('');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -54,31 +69,80 @@ export function ChatView(props: ChatViewProps) {
     await props.onSend(value);
   }
 
+  function insertText(value: string) {
+    setText((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${value}`);
+  }
+
+  function addSkill() {
+    insertText(`[$${skillText.trim().replace(/^\$/, '') || 'skill'}] `);
+    setSkillText('');
+    setSkillOpen(false);
+  }
+
+  const foldersById = new Map(props.folders.map((folder) => [folder.id, folder]));
+  const looseSessions = props.sessions.filter((session) => !session.folderId || !foldersById.has(session.folderId));
+
   return (
     <section className="chat-layout">
       <aside className="session-panel">
         <div className="panel-heading">
           <div><p className="eyebrow">Conversations</p><h2>Chat</h2></div>
-          <button className="round-button" type="button" onClick={props.onAddSession} aria-label="New chat">＋</button>
+          <div className="session-heading-actions">
+            <button className="round-button" type="button" onClick={props.onAddFolder} aria-label="New folder">□</button>
+            <button className="round-button" type="button" onClick={props.onAddSession} aria-label="New chat">＋</button>
+          </div>
         </div>
         <div className="session-list">
-          {props.sessions.map((session) => (
-            <div key={session.id} className={session.id === props.activeId ? 'session-row is-active' : 'session-row'}>
-              <button type="button" onClick={() => props.onSelectSession(session.id)}>
-                <strong>{session.title}</strong>
-                <span>{formatTime(session.updatedAt)} · {session.modelMode}</span>
-              </button>
-              <button className="delete-button" type="button" onClick={() => props.onDeleteSession(session.id)} aria-label={`Delete ${session.title}`}>×</button>
-            </div>
-          ))}
+          {props.folders.map((folder) => {
+            const open = props.expandedFolderId === folder.id;
+            const children = props.sessions.filter((session) => session.folderId === folder.id);
+            return (
+              <div key={folder.id} className="folder-row">
+                <div className="session-row">
+                  <button type="button" onClick={() => props.onToggleFolder(open ? null : folder.id)}>
+                    <input
+                      aria-label={`${folder.title} name`}
+                      value={folder.title}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={(event) => props.onRenameFolder(folder.id, event.target.value)}
+                    />
+                    <span>{children.length} sessions</span>
+                  </button>
+                  <button className="delete-button" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}>×</button>
+                </div>
+                {open && (
+                  <div className="folder-sessions">
+                    {children.length ? children.map((session) => (
+                      <SessionRow key={session.id} session={session} props={props} />
+                    )) : <p className="empty-state">セッションなし</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {looseSessions.map((session) => <SessionRow key={session.id} session={session} props={props} />)}
         </div>
       </aside>
 
       <div className="conversation-panel">
         <div className="conversation-toolbar">
-          <div>
+          <div className="conversation-title-edit">
             <p className="eyebrow">Local inference</p>
-            <h1>{props.activeSession?.title ?? 'Chat'}</h1>
+            <input
+              aria-label="Session name"
+              value={props.activeSession?.title ?? 'Chat'}
+              onChange={(event) => props.activeSession && props.onRenameSession(props.activeSession.id, event.target.value)}
+            />
+            {props.activeSession && (
+              <select
+                aria-label="Session folder"
+                value={props.activeSession.folderId ?? ''}
+                onChange={(event) => props.onAssignSessionFolder(props.activeSession!.id, event.target.value || null)}
+              >
+                <option value="">No folder</option>
+                {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.title}</option>)}
+              </select>
+            )}
           </div>
           <div className="route-controls" aria-label="Model routing">
             {(['auto', 'agents-a1', 'ornith'] as ModelMode[]).map((mode) => (
@@ -114,6 +178,9 @@ export function ChatView(props: ChatViewProps) {
             const parts = message.role === 'assistant' ? splitThinking(message.content) : { thinking: '', answer: message.content };
             const progress = message.metadata?.progress || parts.thinking;
             const answer = parts.answer || (message.streaming && !progress ? 'Generating…' : '');
+            const versions = message.versions?.length ? message.versions : [message.content];
+            const versionIndex = message.versionIndex ?? 0;
+            const editing = editingMessageId === message.id;
             return (
               <article key={message.id} className={`message from-${message.role}`}>
                 <header>
@@ -121,6 +188,18 @@ export function ChatView(props: ChatViewProps) {
                   <span>{formatTime(message.createdAt)}</span>
                   {message.metadata?.provider && <span>{message.metadata.provider}</span>}
                   {message.metrics?.tokensPerSecond && <span>{message.metrics.tokensPerSecond.toFixed(1)} t/s</span>}
+                  <span className="message-actions">
+                    {versions.length > 1 && (
+                      <>
+                        <button type="button" disabled={versionIndex <= 0} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex - 1)}>‹</button>
+                        <small>{versionIndex + 1} / {versions.length}</small>
+                        <button type="button" disabled={versionIndex >= versions.length - 1} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex + 1)}>›</button>
+                      </>
+                    )}
+                    {message.role === 'user' && (
+                      <button type="button" onClick={() => { setEditingMessageId(message.id); setEditingText(message.content); }}>Edit</button>
+                    )}
+                  </span>
                 </header>
                 {progress && (
                   <details className="reasoning-block" open={message.streaming}>
@@ -129,6 +208,19 @@ export function ChatView(props: ChatViewProps) {
                   </details>
                 )}
                 {answer && <div className="message-content"><MarkdownText text={answer} /></div>}
+                {editing && (
+                  <form className="edit-form" onSubmit={(event) => {
+                    event.preventDefault();
+                    props.onEditMessage(props.activeId, message.id, editingText);
+                    setEditingMessageId(null);
+                  }}>
+                    <textarea value={editingText} onChange={(event) => setEditingText(event.target.value)} />
+                    <div className="edit-actions">
+                      <button type="button" onClick={() => setEditingMessageId(null)}>Cancel</button>
+                      <button type="submit">Save</button>
+                    </div>
+                  </form>
+                )}
               </article>
             );
           })}
@@ -136,6 +228,28 @@ export function ChatView(props: ChatViewProps) {
         </div>
 
         <form className="composer" onSubmit={submit}>
+          <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'}>
+            <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools">＋</button>
+            <div className="composer-tool-menu">
+              <button type="button" onClick={() => fileInputRef.current?.click()}>File</button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                hidden
+                onChange={(event) => {
+                  const names = Array.from(event.target.files ?? []).map((file) => `@${file.name}`);
+                  if (names.length) insertText(`${names.join(' ')} `);
+                  event.currentTarget.value = '';
+                  setSkillOpen(false);
+                }}
+              />
+              <div className="composer-skill-row">
+                <input value={skillText} onChange={(event) => setSkillText(event.target.value)} placeholder="$skill" />
+                <button type="button" onClick={addSkill}>Skill</button>
+              </div>
+            </div>
+          </div>
           <textarea
             value={text}
             onChange={(event) => setText(event.target.value)}
@@ -156,5 +270,22 @@ export function ChatView(props: ChatViewProps) {
         </form>
       </div>
     </section>
+  );
+}
+
+function SessionRow({ session, props }: { session: ChatSession; props: ChatViewProps }) {
+  return (
+    <div className={session.id === props.activeId ? 'session-row is-active' : 'session-row'}>
+      <button type="button" onClick={() => props.onSelectSession(session.id)}>
+        <input
+          aria-label={`${session.title} name`}
+          value={session.title}
+          onClick={(event) => event.stopPropagation()}
+          onChange={(event) => props.onRenameSession(session.id, event.target.value)}
+        />
+        <span>{formatTime(session.updatedAt)} · {session.modelMode}</span>
+      </button>
+      <button className="delete-button" type="button" onClick={() => props.onDeleteSession(session.id)} aria-label={`Delete ${session.title}`}>×</button>
+    </div>
   );
 }

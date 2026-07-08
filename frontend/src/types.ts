@@ -58,6 +58,9 @@ export interface ChatMessage {
   role: MessageRole;
   content: string;
   createdAt: number;
+  versions?: string[];
+  versionIndex?: number;
+  versionTimes?: number[];
   metadata?: MessageMetadata;
   metrics?: MessageMetrics;
   streaming?: boolean;
@@ -66,10 +69,17 @@ export interface ChatMessage {
 export interface ChatSession {
   id: string;
   title: string;
+  folderId?: string | null;
   modelMode: ModelMode;
   reasoningEnabled: boolean;
   updatedAt: number;
   messages: ChatMessage[];
+}
+
+export interface ChatFolder {
+  id: string;
+  title: string;
+  updatedAt: number;
 }
 
 export interface StreamEventData {
