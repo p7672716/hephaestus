@@ -190,7 +190,8 @@ h2 { margin-bottom: 8px; font-size: 25px; }
 .settings-grid, .static-grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 260px; gap: 14px; margin-top: 24px; }
 .setting-card { display: grid; gap: 12px; align-content: start; }
 .setting-card label span, .setting-card small { color: var(--muted); font-size: 11px; }
-.setting-card select, .setting-card input[type='text'], .token-input { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--bg); }
+.setting-card select, .setting-card input[type='text'], .setting-input, .token-input { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: var(--bg); }
+.setting-input:is(textarea) { resize: vertical; line-height: 1.5; }
 .range-row { display: grid; grid-template-columns: minmax(0, 1fr) 54px; gap: 12px; align-items: center; }
 .checkbox-row { display: flex; gap: 8px; align-items: center; }
 .setting-actions { display: flex; gap: 8px; }
@@ -201,6 +202,13 @@ h2 { margin-bottom: 8px; font-size: 25px; }
 .static-summary { max-width: 760px; color: var(--muted); line-height: 1.7; }
 .static-list, .project-list, .source-list, .notebook-chat-list, .coding-session-body { display: grid; gap: 8px; align-content: start; }
 .static-list button { text-align: left; opacity: .82; }
+.project-row, .accordion-session { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.project-select, .coding-session-select { display: grid; gap: 4px; min-width: 0; width: 100%; padding: 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface-2); text-align: left; }
+.project-title, .session-title, .coding-session-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-meta { display: block; color: var(--muted); font-size: 11px; }
+.source-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.source-select { display: grid; gap: 4px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface-2); text-align: left; }
+.source-item .session-delete { align-self: center; }
 .static-main { display: grid; gap: 10px; align-content: start; }
 .static-main article { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--surface-2) 48%, transparent); }
 .static-main strong, .static-main span { display: block; }
@@ -257,7 +265,18 @@ h2 { margin-bottom: 8px; font-size: 25px; }
 .skill-card-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; color: var(--accent); background: var(--accent-soft); }
 .skill-card h2 { margin: 0; font-size: 24px; }
 .skill-card-head p { margin: 0 0 3px; color: var(--accent); font: 700 10px 'Space Mono', monospace; text-transform: uppercase; }
+.skill-card-meta, .skill-card-description, .skill-card-path, .skill-card-foot { color: var(--muted); font-size: 12px; }
+.skill-card-description { min-height: 42px; margin: 0; line-height: 1.55; }
+.skill-chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.skill-chip { max-width: 100%; padding: 4px 7px; overflow: hidden; border-radius: 8px; color: var(--muted); background: var(--surface-2); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.skill-card-path { min-width: 0; margin: 0; overflow: hidden; font-family: 'Space Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
 .skill-card footer button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 50%; color: var(--muted); background: var(--surface-2); }
+.skill-switch { position: relative; width: 38px; height: 22px; flex: 0 0 auto; }
+.skill-switch input { position: absolute; inset: 0; opacity: 0; }
+.skill-switch span { position: absolute; inset: 0; border-radius: 999px; background: color-mix(in srgb, var(--muted) 24%, transparent); }
+.skill-switch span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); transition: transform 160ms ease; }
+.skill-switch input:checked + span { background: var(--accent-soft); }
+.skill-switch input:checked + span::after { transform: translateX(16px); background: var(--accent); }
 
 .auth-overlay { position: fixed; inset: 0; z-index: 99; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at top, var(--surface-2), var(--bg) 58%); }
 .auth-card { width: min(420px, 100%); padding: 34px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); }

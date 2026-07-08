@@ -25,25 +25,27 @@ const notes = [
   {
     title: 'Local Model',
     updated: '今',
+    sessions: ['Source Q&A', 'Benchmark notes'],
     sources: ['Local model harness / 12 pages', 'Inference notes / 8 notes', 'Harness logs / Text'],
   },
   {
     title: 'Harness',
     updated: '昨日',
+    sessions: ['Runbook review'],
     sources: ['Harness notes / 6 notes', 'Runbook / 4 pages'],
   },
 ];
 
 const skills = [
-  ['ponytail', 'coding', '最小実装と過剰設計回避のための coding skill。'],
-  ['caveman', 'communication', '技術内容を保ったまま応答を短くする communication skill。'],
-  ['playwright-cli', 'verification', 'UI操作、スクリーンショット、ブラウザ検証用 skill。'],
+  { name: 'ponytail', scope: 'coding', status: 'Enabled', description: '最小実装と過剰設計回避のための coding skill。', path: '~/.codex/skills/ponytail', triggers: ['minimal', 'yagni'], updated: '今' },
+  { name: 'caveman', scope: 'communication', status: 'Enabled', description: '技術内容を保ったまま応答を短くする communication skill。', path: '~/.codex/skills/caveman', triggers: ['brief', 'tokens'], updated: '昨日' },
+  { name: 'playwright-cli', scope: 'verification', status: 'Disabled', description: 'UI操作、スクリーンショット、ブラウザ検証用 skill。', path: '~/.codex/skills/webapp-testing', triggers: ['browser', 'screenshot'], updated: '2日前' },
 ];
 
 const tools = [
-  ['shell_command', 'local', 'コマンド実行、構文確認、ローカルサーバー起動に使うツール。'],
-  ['apply_patch', 'editing', 'ファイル編集を差分として適用するためのツール。'],
-  ['image_gen', 'asset', 'アイコンや画像素材を生成するためのツール。'],
+  { name: 'shell_command', scope: 'local', status: 'Enabled', description: 'コマンド実行、構文確認、ローカルサーバー起動に使うツール。', path: 'functions.exec_command', triggers: ['shell', 'test'], updated: '今' },
+  { name: 'apply_patch', scope: 'editing', status: 'Enabled', description: 'ファイル編集を差分として適用するためのツール。', path: 'functions.apply_patch', triggers: ['patch', 'edit'], updated: '今' },
+  { name: 'image_gen', scope: 'asset', status: 'Disabled', description: 'アイコンや画像素材を生成するためのツール。', path: 'image_gen.imagegen', triggers: ['image', 'asset'], updated: '未使用' },
 ];
 
 const linkCandidates = [
@@ -171,13 +173,57 @@ function NotebookView() {
         <aside className="surface-card static-side-panel notebook-sessions">
           <div className="static-panel-heading"><p className="eyebrow section-kicker">Notes</p><button className="round-button" id="newNotebookNoteButton" type="button" disabled aria-label="Add note"><Icon name="plus" /></button></div>
           <div className="project-list" id="notebookNoteList">
-            {notes.map((note, index) => <div key={note.title} className={index === 0 ? 'static-list-item project-item is-active' : 'static-list-item project-item'}><strong className="project-title">{note.title}</strong><span className="project-meta">{note.updated}</span></div>)}
+            {notes.map((note, index) => (
+              <div key={note.title} className={index === 0 ? 'static-list-item project-item is-active is-expanded' : 'static-list-item project-item'}>
+                <div className="project-row session-item">
+                  <button className="project-select session-select" type="button" disabled aria-pressed={index === 0} aria-expanded={index === 0}>
+                    <span className="project-title session-title">{note.title}</span>
+                    <span className="project-meta">{note.updated}</span>
+                  </button>
+                  <button className="delete-button session-delete" type="button" disabled aria-label={`${note.title}を削除`}><Icon name="trash" /></button>
+                </div>
+                {index === 0 && (
+                  <div className="project-accordion">
+                    <div className="project-accordion-inner">
+                      <div className="session-group-row">
+                        <p className="session-group-title">Sessions</p>
+                        <button className="new-session coding-session-create" type="button" disabled aria-label={`${note.title}にセッションを追加`}><Icon name="plus" /></button>
+                      </div>
+                      {note.sessions.map((session) => (
+                        <div className="accordion-session coding-session-item session-item" key={session}>
+                          <button className="coding-session-select session-select" type="button" disabled aria-pressed="false">
+                            <span className="coding-session-title session-title">{session}</span>
+                          </button>
+                          <button className="delete-button session-delete" type="button" disabled aria-label={`${session}を削除`}><Icon name="trash" /></button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </aside>
         <section className="surface-card static-session-detail notebook-main">
-          <header className="notebook-header notebook-title-form"><p className="eyebrow section-kicker">Conversation</p><h2 className="notebook-title-input" id="notebookConversationTitle">Local Model Research</h2><span id="notebookSourceMeta">3 sources / Local model harness selected</span></header>
+          <header className="notebook-header">
+            <form className="notebook-title-form">
+              <input className="notebook-title-input" id="notebookConversationTitle" value="Local Model Research" readOnly aria-label="ノート名" />
+              <button className="message-action" type="button" disabled aria-label="ノート名を保存"><Icon name="edit" /></button>
+            </form>
+            <span id="notebookSourceMeta">3 sources / Local model harness selected</span>
+          </header>
           <div className="notebook-chat-list" id="notebookChatList">
-            <div className="static-message from-assistant">選択中のSourceに基づいて質問できます。回答生成処理は後で接続します。</div>
+            <form className="workspace-settings">
+              <label className="setting-row">
+                <span className="detail-label">Overview</span>
+                <textarea className="setting-input" rows={5} value="選択中のSourceに基づいて質問できます。" readOnly />
+              </label>
+              <label className="setting-row">
+                <span className="detail-label">Dedicated prompt</span>
+                <textarea className="setting-input" rows={7} value="ローカルモデル運用メモを優先して回答する。" readOnly />
+              </label>
+              <button className="setting-submit" type="button" disabled>Apply</button>
+            </form>
           </div>
           <div className="static-composer notebook-composer"><span>ソースについて質問</span><Icon name="send" /></div>
         </section>
@@ -186,7 +232,15 @@ function NotebookView() {
           <div className="source-list" id="sourceList">
             {active.sources.map((source) => {
               const [title, meta] = source.split(' / ');
-              return <div key={source} className="static-list-item source-item source-select"><strong className="source-title">{title}</strong><span className="source-meta">{meta}</span></div>;
+              return (
+                <div key={source} className="static-list-item source-item">
+                  <button className="source-select" type="button" disabled aria-pressed={source === active.sources[0]}>
+                    <span className="source-title">{title}</span>
+                    <span className="source-meta">{meta}</span>
+                  </button>
+                  <button className="delete-button session-delete" type="button" disabled aria-label={`${title}を削除`}><Icon name="trash" /></button>
+                </div>
+              );
             })}
           </div>
         </aside>
@@ -195,7 +249,7 @@ function NotebookView() {
   );
 }
 
-function InventoryView({ kind, items }: { kind: 'Skill' | 'Tool'; items: string[][] }) {
+function InventoryView({ kind, items }: { kind: 'Skill' | 'Tool'; items: typeof skills }) {
   const id = kind.toLowerCase();
   const titleId = kind === 'Skill' ? 'skillTitle' : 'toolTitle';
   const searchId = kind === 'Skill' ? 'skillSearch' : 'toolSearch';
@@ -212,15 +266,20 @@ function InventoryView({ kind, items }: { kind: 'Skill' | 'Tool'; items: string[
           </div>
         </header>
         <div className="skill-grid" id={listId}>
-          {items.map(([name, scope, description]) => (
-            <article key={name} className="skill-card">
+          {items.map((item) => (
+            <article key={item.name} className="skill-card">
               <div className="skill-card-head">
-                <span className="skill-card-icon"><Icon name={kind === 'Skill' ? 'skill' : 'tool'} /></span>
-                <div className="skill-card-title"><p className="skill-card-meta">{scope}</p><h2>{name}</h2></div>
+                <span className="skill-card-icon">{item.name.slice(0, 1).toUpperCase()}</span>
+                <div className="skill-card-title"><h2>{item.name}</h2><span className="skill-card-meta">{item.scope} / {item.status}</span></div>
+                <label className="skill-switch">
+                  <input type="checkbox" defaultChecked={item.status === 'Enabled'} disabled aria-label={`${item.name}を有効化`} />
+                  <span />
+                </label>
               </div>
-              <p className="skill-card-description">{description}</p>
-              <code className="skill-card-path">Static migration shell</code>
-              <footer className="skill-card-foot"><span className="skill-chip-list"><span className="skill-chip">Enabled</span></span><button className="session-delete skill-switch" type="button" disabled><Icon name="trash" /></button></footer>
+              <p className="skill-card-description">{item.description}</p>
+              <div className="skill-chip-list">{item.triggers.map((trigger) => <span className="skill-chip" key={trigger}>{trigger}</span>)}</div>
+              <p className="skill-card-path">{item.path}</p>
+              <footer className="skill-card-foot"><span>{item.updated}</span><button className="delete-button session-delete" type="button" disabled aria-label={`${item.name}を削除`}><Icon name="trash" /></button></footer>
             </article>
           ))}
         </div>
