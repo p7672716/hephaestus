@@ -161,10 +161,13 @@ h2 { margin-bottom: 8px; font-size: 25px; }
 .inventory-list span { color: var(--muted); font-size: 11px; }
 .error-console { margin-top: 14px; padding: 16px; border-radius: 12px; color: #f0c1b8; background: #3c2421; white-space: pre-wrap; }
 .task-queue { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
-.task-queue-item { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.task-queue-item { display: grid; grid-template-columns: 28px 38px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
 .task-queue-item[draggable='true'] { cursor: grab; }
 .task-queue-item.is-dragging { opacity: .45; border-color: var(--accent); }
-.task-queue-item > span { color: var(--accent); font: 700 10px 'Space Mono', monospace; }
+.queue-rank { color: var(--accent); font: 700 10px 'Space Mono', monospace; }
+.queue-drag-handle, .queue-drag-spacer { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 50%; color: var(--muted); background: transparent; }
+.queue-drag-handle { cursor: grab; }
+.queue-drag-handle .icon { width: 15px; height: 15px; }
 .task-queue-item small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
 .queue-drop-tail { padding: 9px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); text-align: center; font-size: 11px; }
 .queue-drop-tail.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 38%, transparent); }

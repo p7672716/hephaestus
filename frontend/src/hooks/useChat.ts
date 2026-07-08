@@ -2,17 +2,45 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from '../api';
 import type { ChatFolder, ChatMessage, ChatSession, MessageMetadata, ModelMode, StreamEventData, UserSettings } from '../types';
 
-const STORAGE_KEY = 'hephaestus-react-chat-v1';
+const STORAGE_KEY = 'hephaestus-chat-state-v1';
+const REACT_STORAGE_KEY = 'hephaestus-react-chat-v1';
 const modelLabels: Record<Exclude<ModelMode, 'auto'>, string> = {
   'agents-a1': 'Agents-A1',
   ornith: 'Ornith',
 };
+const modelModes = new Set<string>(['auto', 'agents-a1', 'ornith']);
 
 interface ChatStore {
   sessions: ChatSession[];
   folders: ChatFolder[];
   activeId: string;
   expandedFolderId: string | null;
+}
+
+type StoredMessage = Partial<ChatMessage> & {
+  text?: string;
+  sentAt?: string;
+};
+
+type StoredSession = Partial<ChatSession> & {
+  model?: string;
+  updated?: string;
+  messages?: StoredMessage[];
+};
+
+type StoredFolder = Partial<ChatFolder>;
+
+type StoredChatState = Partial<ChatStore> & {
+  chatSessions?: StoredSession[];
+  chatFolders?: StoredFolder[];
+  activeSessionId?: string;
+  expandedChatFolderId?: string | null;
+  selectedModelMode?: ModelMode;
+  reasoningEnabled?: boolean;
+};
+
+function modelMode(value: unknown): ModelMode | undefined {
+  return typeof value === 'string' && modelModes.has(value) ? value as ModelMode : undefined;
 }
 
 function createSession(settings?: UserSettings): ChatSession {
@@ -32,40 +60,63 @@ function createFolder(): ChatFolder {
   return { id: crypto.randomUUID(), title: 'New folder', updatedAt: Date.now() };
 }
 
-function normalizeMessage(message: ChatMessage): ChatMessage {
-  const content = message.content ?? message.versions?.[message.versionIndex ?? 0] ?? '';
+function normalizeMessage(message: StoredMessage): ChatMessage {
+  const versionIndex = message.versionIndex ?? 0;
+  const content = message.content ?? message.versions?.[versionIndex] ?? message.text ?? '';
   return {
     ...message,
     id: message.id ?? crypto.randomUUID(),
+    role: message.role ?? 'assistant',
     content,
-    versions: message.versions,
-    versionIndex: message.versionIndex ?? 0,
-    versionTimes: message.versionTimes,
+    createdAt: typeof message.createdAt === 'number' ? message.createdAt : Date.now(),
+    versions: message.versions?.length ? message.versions : [content],
+    versionIndex,
+    versionTimes: message.versionTimes?.filter((value): value is number => typeof value === 'number'),
   };
 }
 
-function normalizeSession(session: ChatSession, settings?: UserSettings): ChatSession {
+function normalizeSession(session: StoredSession, settings?: UserSettings, defaults?: Pick<StoredChatState, 'selectedModelMode' | 'reasoningEnabled'>): ChatSession {
   return {
     ...session,
+    id: session.id ?? crypto.randomUUID(),
+    title: session.title ?? 'New chat',
     folderId: session.folderId ?? null,
-    modelMode: session.modelMode ?? settings?.defaultModelMode ?? 'auto',
-    reasoningEnabled: session.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false,
+    modelMode: modelMode(session.modelMode) ?? modelMode(defaults?.selectedModelMode) ?? settings?.defaultModelMode ?? 'auto',
+    reasoningEnabled: session.reasoningEnabled ?? defaults?.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false,
+    updatedAt: typeof session.updatedAt === 'number' ? session.updatedAt : Date.now(),
     messages: (session.messages ?? []).map(normalizeMessage),
   };
 }
 
+function normalizeFolder(folder: StoredFolder): ChatFolder {
+  return {
+    id: folder.id ?? crypto.randomUUID(),
+    title: folder.title ?? 'New folder',
+    updatedAt: typeof folder.updatedAt === 'number' ? folder.updatedAt : Date.now(),
+  };
+}
+
+function readSavedState(): StoredChatState | ChatSession[] {
+  const primary = localStorage.getItem(STORAGE_KEY);
+  if (primary) return JSON.parse(primary) as StoredChatState | ChatSession[];
+  return JSON.parse(localStorage.getItem(REACT_STORAGE_KEY) ?? '[]') as StoredChatState | ChatSession[];
+}
+
 function loadStore(settings?: UserSettings): ChatStore {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Partial<ChatStore> | ChatSession[];
-    const sessions = Array.isArray(saved) ? saved : saved.sessions;
+    const saved = readSavedState();
+    const sessions = Array.isArray(saved) ? saved : saved.sessions ?? saved.chatSessions;
     const normalized = Array.isArray(sessions) && sessions.length
-      ? sessions.map((session) => normalizeSession(session, settings))
+      ? sessions.map((session) => normalizeSession(session, settings, Array.isArray(saved) ? undefined : saved))
       : [createSession(settings)];
+    const folders = !Array.isArray(saved)
+      ? (saved.folders ?? saved.chatFolders ?? []).map(normalizeFolder)
+      : [];
     return {
       sessions: normalized,
-      folders: !Array.isArray(saved) && Array.isArray(saved.folders) ? saved.folders : [],
-      activeId: !Array.isArray(saved) && saved.activeId ? saved.activeId : normalized[0]?.id ?? '',
-      expandedFolderId: !Array.isArray(saved) ? saved.expandedFolderId ?? null : null,
+      folders,
+      activeId: !Array.isArray(saved) && (saved.activeId ?? saved.activeSessionId) ? (saved.activeId ?? saved.activeSessionId)! : normalized[0]?.id ?? '',
+      expandedFolderId: !Array.isArray(saved) ? saved.expandedFolderId ?? saved.expandedChatFolderId ?? null : null,
     };
   } catch {
     const session = createSession(settings);
@@ -106,8 +157,30 @@ export function useChat(settings?: UserSettings) {
   const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0];
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sessions, folders, activeId, expandedFolderId }));
-  }, [activeId, expandedFolderId, folders, sessions]);
+    const selectedModelMode = activeSession?.modelMode ?? settings?.defaultModelMode ?? 'auto';
+    const reasoningEnabled = activeSession?.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false;
+    const chatSessions = sessions.map((session) => ({
+      ...session,
+      updated: '今',
+      messages: session.messages.map((message) => ({
+        ...message,
+        versionIndex: message.versionIndex ?? 0,
+        versions: message.versions?.length ? message.versions : [message.content],
+      })),
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      sessions,
+      folders,
+      activeId,
+      expandedFolderId,
+      chatSessions,
+      chatFolders: folders,
+      activeSessionId: activeId,
+      expandedChatFolderId: expandedFolderId,
+      selectedModelMode,
+      reasoningEnabled,
+    }));
+  }, [activeId, activeSession?.modelMode, activeSession?.reasoningEnabled, expandedFolderId, folders, sessions, settings?.defaultModelMode, settings?.defaultReasoningEnabled]);
 
   const addSession = useCallback(() => {
     const session = createSession(settings);

@@ -11,24 +11,30 @@ interface QueueTask {
   id: string;
   title: string;
   meta: string;
+  owner: string;
+  elapsed?: string;
   state: string;
 }
 
 export function DashboardView({ runtime, sessions }: DashboardViewProps) {
   const activeLabel = runtime.starting_model_label ?? runtime.active_model_label ?? 'None';
   const [queue, setQueue] = useState<QueueTask[]>([
-    { id: 'task-notebook-answer', title: 'Notebook source answer', meta: 'Local Model Research', state: 'waiting' },
-    { id: 'task-chat-branch', title: 'Chat branch response', meta: 'Local harness', state: 'waiting' },
-    { id: 'task-knowledge-index', title: 'Knowledge indexing', meta: 'Harness docs', state: 'waiting' },
+    { id: 'task-notebook-answer', title: 'Notebook source answer', meta: 'Local Model Research', owner: 'Notebook', state: 'waiting' },
+    { id: 'task-chat-branch', title: 'Chat branch response', meta: 'Local harness', owner: 'Chat', state: 'waiting' },
+    { id: 'task-knowledge-index', title: 'Knowledge indexing', meta: 'Harness docs', owner: 'Knowledge', state: 'waiting' },
   ]);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const running = queue.find((task) => task.state === 'running');
   const waiting = queue.filter((task) => task.state === 'waiting');
   const stopped = queue.filter((task) => task.state === 'stopped');
-  const updateTask = (id: string, state: string) => setQueue((current) => current.map((task) => (
-    task.id === id ? { ...task, state } : task.state === 'running' && state === 'running' ? { ...task, state: 'stopped' } : task
-  )));
+  const updateTask = (id: string, state: string) => setQueue((current) => current.map((task) => {
+    if (task.id === id) return { ...task, state, elapsed: state === 'running' ? '00:00' : state === 'stopped' ? 'Stopped' : undefined };
+    return task.state === 'running' && state === 'running' ? { ...task, state: 'stopped', elapsed: 'Stopped' } : task;
+  }));
   const removeTask = (id: string) => setQueue((current) => current.filter((task) => task.id !== id));
+  const requeueTask = (id: string) => setQueue((current) => current.map((task) => (
+    task.id === id ? { ...task, state: 'waiting', elapsed: undefined } : task
+  )));
   const moveWaitingTask = (targetId: string, after = false) => {
     if (!draggedTaskId || draggedTaskId === targetId) return;
     setQueue((current) => {
@@ -74,6 +80,9 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
             <div><strong>Acceleration</strong><span>{runtime.acceleration ?? 'Not running'}</span></div>
             <div><strong>Context</strong><span>{runtime.ctx_size ?? '8192'} / batch {runtime.batch_size ?? '512'}</span></div>
             <div><strong>Active task</strong><span>{running?.title ?? 'No running task'}</span></div>
+            <div><strong>Owner</strong><span>{running?.owner ?? 'Queue waiting'}</span></div>
+            <div><strong>Elapsed</strong><span>{running?.elapsed ?? '--:--'}</span></div>
+            <div><strong>Policy</strong><span>{runtime.mock ? 'Mock stream, single resident model' : 'Single resident model, queued execution'}</span></div>
           </div>
           {running && <button className="primary-button" type="button" onClick={() => updateTask(running.id, 'stopped')}>Stop task</button>}
         </article>
@@ -83,8 +92,8 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
             <span className="state-badge">{waiting.length} waiting / {stopped.length} stopped</span>
           </div>
           <ol className="task-queue">
-            {running && <QueueItem task={running} label="Now" onStart={() => updateTask(running.id, 'running')} onStop={() => updateTask(running.id, 'stopped')} onDelete={() => removeTask(running.id)} />}
-            {!running && <li className="task-queue-item is-placeholder"><span>Now</span><strong>No running task</strong><small>Model slot is idle</small></li>}
+            {running && <QueueItem task={running} label="Now" onStart={() => updateTask(running.id, 'running')} onStop={() => updateTask(running.id, 'stopped')} onDelete={() => removeTask(running.id)} onRequeue={() => requeueTask(running.id)} />}
+            {!running && <li className="task-queue-item is-placeholder"><span className="queue-drag-spacer" /><span className="queue-rank">Now</span><div><strong>No running task</strong><small>Model slot is idle</small></div></li>}
             {waiting.map((task, index) => (
               <QueueItem
                 key={task.id}
@@ -97,6 +106,7 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
                 onStart={() => updateTask(task.id, 'running')}
                 onStop={() => updateTask(task.id, 'stopped')}
                 onDelete={() => removeTask(task.id)}
+                onRequeue={() => requeueTask(task.id)}
               />
             ))}
             {waiting.length > 0 && (
@@ -114,7 +124,7 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
                 Drop at end
               </li>
             )}
-            {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} />)}
+            {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} onRequeue={() => requeueTask(task.id)} />)}
           </ol>
         </article>
       </div>
@@ -153,6 +163,7 @@ function QueueItem(props: {
   onStart: () => void;
   onStop: () => void;
   onDelete: () => void;
+  onRequeue: () => void;
 }) {
   return (
     <li
@@ -172,12 +183,15 @@ function QueueItem(props: {
       onDrop={(event) => event.preventDefault()}
       onDragEnd={props.onDragEnd}
     >
-      <span>{props.label}</span>
-      <div><strong>{props.task.title}</strong><small>{props.task.meta} / {props.task.state}</small></div>
+      {props.task.state === 'waiting'
+        ? <button className="queue-drag-handle" type="button" aria-label={`${props.task.title}をドラッグして並び替え`}><Icon name="grip" /></button>
+        : <span className="queue-drag-spacer" />}
+      <span className="queue-rank">{props.label}</span>
+      <div><strong>{props.task.title}</strong><small>{props.task.meta} / {props.task.state}{props.task.elapsed ? ` / ${props.task.elapsed}` : ''}</small></div>
       <div className="queue-actions">
-        {props.task.state === 'running'
-          ? <button type="button" onClick={props.onStop} aria-label="Stop task"><Icon name="stop" /></button>
-          : <button type="button" onClick={props.onStart} aria-label="Start task"><Icon name="play" /></button>}
+        {props.task.state === 'running' && <button type="button" onClick={props.onStop} aria-label="Stop task"><Icon name="stop" /></button>}
+        {props.task.state === 'waiting' && <button type="button" onClick={props.onStart} aria-label="Start task"><Icon name="play" /></button>}
+        {props.task.state === 'stopped' && <button type="button" onClick={props.onRequeue} aria-label="Requeue task"><Icon name="requeue" /></button>}
         <button type="button" onClick={props.onDelete} aria-label="Delete task"><Icon name="trash" /></button>
       </div>
     </li>
