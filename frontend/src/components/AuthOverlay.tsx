@@ -27,7 +27,7 @@ export function AuthOverlay({ error, onLogin }: AuthOverlayProps) {
   return (
     <div className="auth-overlay" role="presentation">
       <form className="auth-card" onSubmit={submit}>
-        <div className="forge-mark" aria-hidden="true">H</div>
+        <img className="auth-icon" src="/assets/hephaestus-icon.svg" width="48" height="48" alt="" />
         <p className="eyebrow">Remote access</p>
         <h1>Hephaestus</h1>
         <label>

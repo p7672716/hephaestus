@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ChatSession, RuntimeInfo } from '../types';
+import { Icon } from './Icon';
 
 interface DashboardViewProps {
   runtime: RuntimeInfo;
@@ -175,9 +176,9 @@ function QueueItem(props: {
       <div><strong>{props.task.title}</strong><small>{props.task.meta} / {props.task.state}</small></div>
       <div className="queue-actions">
         {props.task.state === 'running'
-          ? <button type="button" onClick={props.onStop}>■</button>
-          : <button type="button" onClick={props.onStart}>▶</button>}
-        <button type="button" onClick={props.onDelete}>×</button>
+          ? <button type="button" onClick={props.onStop} aria-label="Stop task"><Icon name="stop" /></button>
+          : <button type="button" onClick={props.onStart} aria-label="Start task"><Icon name="play" /></button>}
+        <button type="button" onClick={props.onDelete} aria-label="Delete task"><Icon name="trash" /></button>
       </div>
     </li>
   );

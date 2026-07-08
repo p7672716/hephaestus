@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Hephaestus">
+  <path d="M18 47h28" fill="none" stroke="#c55734" stroke-width="5" stroke-linecap="square" />
+  <path d="M23 38h18l-4 9H27z" fill="#242426" />
+  <path d="M20 28h24l-3 10H23z" fill="#d06c4c" />
+  <path d="M31 8c7 7 8 13 3 19 7-2 11-7 10-14 7 8 5 22-6 27-9 4-20-1-20-11 0-7 5-12 13-21z" fill="#c55734" />
+  <path d="M32 18c4 5 3 9-1 13 5-1 8-4 8-9 4 7 0 14-7 15-6 1-11-3-10-9 .5-4 4-7 10-10z" fill="#f0b15b" opacity=".92" />
+  <style>
+    @media (prefers-color-scheme: dark) {
+      path:nth-of-type(2) { fill: #e4dec9; }
+    }
+  </style>
+</svg>

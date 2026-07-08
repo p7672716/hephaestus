@@ -1,4 +1,5 @@
 import type { RuntimeInfo } from '../types';
+import { Icon } from './Icon';
 
 interface RuntimeBarProps {
   runtime: RuntimeInfo;
@@ -29,18 +30,18 @@ export function RuntimeBar(props: RuntimeBarProps) {
 
   return (
     <header className="topbar">
-      <button className="icon-button" type="button" onClick={props.onToggleSidebar} aria-label="Toggle sidebar">☰</button>
-      <div className="brand"><span className="forge-mark small" aria-hidden="true">H</span><strong>Hephaestus</strong></div>
+      <button className="icon-button" type="button" onClick={props.onToggleSidebar} aria-label="Toggle sidebar"><Icon name="menu" /></button>
+      <div className="brand"><img className="brand-icon" src="/assets/hephaestus-icon.svg" width="40" height="40" alt="" /><strong>Hephaestus</strong></div>
       <div className="runtime-pill" title={props.runtime.last_error ?? undefined}>
         <span className={`status-dot state-${props.runtime.state}`} />
         <span>{runtimeState(props.runtime, props.generating)}</span>
         <strong>{label}</strong>
         {props.runtime.acceleration && <small>{props.runtime.acceleration}</small>}
         <small>{props.reasoningEnabled ? 'Reasoning ON' : 'Reasoning OFF'}</small>
-        <button type="button" onClick={props.onStop} disabled={!props.generating && !props.runtime.active_model_id}>■</button>
-        <button type="button" onClick={props.onResume} disabled={props.generating || props.runtime.state === 'starting'}>▶</button>
+        <button type="button" onClick={props.onStop} disabled={!props.generating && !props.runtime.active_model_id} aria-label="Stop"><Icon name="stop" /></button>
+        <button type="button" onClick={props.onResume} disabled={props.generating || props.runtime.state === 'starting'} aria-label="Resume"><Icon name="play" /></button>
       </div>
-      <button className="icon-button" type="button" onClick={props.onToggleTheme} aria-label="Toggle theme">{props.dark ? '☀' : '☾'}</button>
+      <button className="icon-button" type="button" onClick={props.onToggleTheme} aria-label="Toggle theme"><Icon name={props.dark ? 'sun' : 'moon'} /></button>
     </header>
   );
 }

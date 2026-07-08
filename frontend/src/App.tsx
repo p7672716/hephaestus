@@ -48,7 +48,7 @@ export default function App() {
   if (!auth.status) {
     return (
       <div className="loading-screen">
-        <span className="forge-mark" aria-hidden="true">H</span>
+        <img className="empty-icon" src="/assets/hephaestus-icon.svg" width="56" height="56" alt="" />
         <p>{auth.error || 'Connecting to the local backend…'}</p>
       </div>
     );

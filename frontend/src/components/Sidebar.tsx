@@ -1,15 +1,16 @@
 import type { ViewId } from '../types';
+import { Icon, type IconName } from './Icon';
 
-const items: Array<{ id: ViewId; label: string; glyph: string }> = [
-  { id: 'dashboard', label: 'Dashboard', glyph: '◫' },
-  { id: 'chat', label: 'Chat', glyph: '◇' },
-  { id: 'coding', label: 'Coding', glyph: '</>' },
-  { id: 'notebook', label: 'Notebook', glyph: '▤' },
-  { id: 'skill', label: 'Skill', glyph: '⬡' },
-  { id: 'tool', label: 'Tool', glyph: '⌁' },
-  { id: 'automation', label: 'Automation', glyph: '↻' },
-  { id: 'knowledge', label: 'Knowledge', glyph: '≡' },
-  { id: 'setting', label: 'Setting', glyph: '⚙' },
+const items: Array<{ id: ViewId; label: string; icon: IconName }> = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { id: 'chat', label: 'Chat', icon: 'chat' },
+  { id: 'coding', label: 'Coding', icon: 'coding' },
+  { id: 'notebook', label: 'Notebook', icon: 'notebook' },
+  { id: 'skill', label: 'Skill', icon: 'skill' },
+  { id: 'tool', label: 'Tool', icon: 'tool' },
+  { id: 'automation', label: 'Automation', icon: 'automation' },
+  { id: 'knowledge', label: 'Knowledge', icon: 'knowledge' },
+  { id: 'setting', label: 'Setting', icon: 'setting' },
 ];
 
 interface SidebarProps {
@@ -31,7 +32,7 @@ export function Sidebar({ view, collapsed, onSelect }: SidebarProps) {
             title={item.label}
             onClick={() => onSelect(item.id)}
           >
-            <span className="nav-glyph" aria-hidden="true">{item.glyph}</span>
+            <span className="nav-icon"><Icon name={item.icon} /></span>
             <span className="nav-label">{item.label}</span>
           </button>
         ))}

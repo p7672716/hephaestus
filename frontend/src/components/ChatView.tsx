@@ -1,4 +1,5 @@
 import { type DragEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { Icon } from './Icon';
 import { MarkdownText } from './MarkdownText';
 import type { ChatFolder, ChatSession, ModelMode } from '../types';
 
@@ -96,8 +97,8 @@ export function ChatView(props: ChatViewProps) {
         <div className="panel-heading">
           <div><p className="eyebrow">Conversations</p><h2>Chat</h2></div>
           <div className="session-heading-actions">
-            <button className="round-button" type="button" onClick={props.onAddFolder} aria-label="New folder">□</button>
-            <button className="round-button" type="button" onClick={props.onAddSession} aria-label="New chat">＋</button>
+            <button className="round-button" type="button" onClick={props.onAddFolder} aria-label="New folder"><Icon name="folder" /></button>
+            <button className="round-button" type="button" onClick={props.onAddSession} aria-label="New chat"><Icon name="plus" /></button>
           </div>
         </div>
         <div className="session-list">
@@ -121,7 +122,7 @@ export function ChatView(props: ChatViewProps) {
                     />
                     <span>{children.length} sessions</span>
                   </button>
-                  <button className="delete-button" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}>×</button>
+                  <button className="delete-button" type="button" onClick={() => props.onDeleteFolder(folder.id)} aria-label={`Delete ${folder.title}`}><Icon name="trash" /></button>
                 </div>
                 {open && (
                   <div
@@ -214,7 +215,7 @@ export function ChatView(props: ChatViewProps) {
         <div className="message-list" aria-live="polite">
           {!props.activeSession?.messages.length && (
             <div className="empty-conversation">
-              <span className="forge-mark" aria-hidden="true">H</span>
+              <img className="empty-icon" src="/assets/hephaestus-icon.svg" width="56" height="56" alt="" />
               <h2>Forge a question</h2>
               <p>Auto routing sends coding work to Ornith and analysis work to Agents-A1.</p>
             </div>
@@ -236,13 +237,13 @@ export function ChatView(props: ChatViewProps) {
                   <span className="message-actions">
                     {versions.length > 1 && (
                       <>
-                        <button type="button" disabled={versionIndex <= 0} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex - 1)}>‹</button>
+                        <button type="button" disabled={versionIndex <= 0} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex - 1)} aria-label="Previous version"><Icon name="prev" /></button>
                         <small>{versionIndex + 1} / {versions.length}</small>
-                        <button type="button" disabled={versionIndex >= versions.length - 1} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex + 1)}>›</button>
+                        <button type="button" disabled={versionIndex >= versions.length - 1} onClick={() => props.onSelectMessageVersion(props.activeId, message.id, versionIndex + 1)} aria-label="Next version"><Icon name="next" /></button>
                       </>
                     )}
                     {message.role === 'user' && (
-                      <button type="button" onClick={() => { setEditingMessageId(message.id); setEditingText(message.content); }}>Edit</button>
+                      <button type="button" onClick={() => { setEditingMessageId(message.id); setEditingText(message.content); }} aria-label="Edit message"><Icon name="edit" /></button>
                     )}
                   </span>
                 </header>
@@ -274,7 +275,7 @@ export function ChatView(props: ChatViewProps) {
 
         <form className="composer" onSubmit={submit}>
           <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'}>
-            <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools">＋</button>
+            <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools"><Icon name="plus" /></button>
             <div className="composer-tool-menu">
               <button type="button" onClick={() => fileInputRef.current?.click()}>File</button>
               <input
@@ -351,7 +352,7 @@ function SessionRow({
         />
         <span>{formatTime(session.updatedAt)} · {session.modelMode}</span>
       </button>
-      <button className="delete-button" type="button" onClick={() => props.onDeleteSession(session.id)} aria-label={`Delete ${session.title}`}>×</button>
+      <button className="delete-button" type="button" onClick={() => props.onDeleteSession(session.id)} aria-label={`Delete ${session.title}`}><Icon name="trash" /></button>
     </div>
   );
 }
