@@ -57,11 +57,19 @@ export function ChatView(props: ChatViewProps) {
   const [editingText, setEditingText] = useState('');
   const [draggingSessionId, setDraggingSessionId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ block: 'end' });
   }, [props.activeSession?.messages]);
+
+  useEffect(() => {
+    if (!skillOpen) return undefined;
+    const close = () => setSkillOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [skillOpen]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -72,7 +80,15 @@ export function ChatView(props: ChatViewProps) {
   }
 
   function insertText(value: string) {
-    setText((current) => `${current}${current && !current.endsWith(' ') ? ' ' : ''}${value}`);
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? text.length;
+    const end = textarea?.selectionEnd ?? text.length;
+    const next = `${text.slice(0, start)}${value}${text.slice(end)}`;
+    setText(next);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(start + value.length, start + value.length);
+    });
   }
 
   function addSkill() {
@@ -285,8 +301,16 @@ export function ChatView(props: ChatViewProps) {
 
         <form className="composer" onSubmit={submit}>
           <div className="composer-box">
-            <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'}>
-              <button className="composer-tool-toggle" type="button" onClick={() => setSkillOpen((value) => !value)} aria-label="Tools"><Icon name="plus" /></button>
+            <div className={skillOpen ? 'composer-tools is-open' : 'composer-tools'} onClick={(event) => event.stopPropagation()}>
+              <button
+                className="composer-tool-toggle"
+                type="button"
+                onClick={() => setSkillOpen((value) => !value)}
+                aria-label="Tools"
+                aria-expanded={skillOpen}
+              >
+                <Icon name="plus" />
+              </button>
               <div className="composer-tool-menu">
                 <button className="composer-tool-option" type="button" onClick={() => fileInputRef.current?.click()}>File</button>
                 <input
@@ -303,12 +327,23 @@ export function ChatView(props: ChatViewProps) {
                   }}
                 />
                 <div className="composer-skill-row">
-                  <input className="composer-skill-input" value={skillText} onChange={(event) => setSkillText(event.target.value)} placeholder="$skill" />
+                  <input
+                    className="composer-skill-input"
+                    value={skillText}
+                    onChange={(event) => setSkillText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Enter') return;
+                      event.preventDefault();
+                      addSkill();
+                    }}
+                    placeholder="$skill"
+                  />
                   <button className="composer-tool-option" type="button" onClick={addSkill}>Skill</button>
                 </div>
               </div>
             </div>
             <textarea
+              ref={textareaRef}
               value={text}
               onChange={(event) => setText(event.target.value)}
               onKeyDown={(event) => {
