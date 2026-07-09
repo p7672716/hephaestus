@@ -23,7 +23,18 @@ def main() -> None:
         page.wait_for_load_state("networkidle")
         expect(page.locator("#runtimeStatus")).to_contain_text("mock", timeout=10_000)
 
-        page.locator(".conversation-panel form.composer textarea").fill("方針を整理して")
+        composer = page.locator(".conversation-panel form.composer")
+        textarea = composer.locator("textarea")
+        textarea.fill("alpha omega")
+        textarea.evaluate("node => node.setSelectionRange(6, 6)")
+        composer.locator(".composer-tool-toggle").click()
+        expect(composer.locator(".composer-tool-toggle")).to_have_attribute("aria-expanded", "true")
+        composer.locator(".composer-skill-input").fill("ponytail")
+        composer.locator(".composer-skill-input").press("Enter")
+        expect(textarea).to_have_value("alpha [$ponytail] omega")
+        expect(composer.locator(".composer-tool-toggle")).to_have_attribute("aria-expanded", "false")
+
+        textarea.fill("方針を整理して")
         page.locator(".conversation-panel .composer-send").click()
         expect(page.locator(".conversation-panel article").last).to_contain_text("Agents-A1 mock response", timeout=10_000)
         assert_no_horizontal_overflow(page)
@@ -31,13 +42,34 @@ def main() -> None:
         page.locator("#modelRouteSelector button[data-model='ornith']").click()
         page.locator(".conversation-panel form.composer textarea").fill("token " * 80)
         page.locator(".conversation-panel .composer-send").click()
-        page.locator("#runtimeCancel").click()
-        expect(page.locator("#runtimeCancel")).to_be_disabled(timeout=10_000)
+        page.locator("button[data-label='Dashboard']").click()
+        expect(page.locator("#taskQueueList")).to_contain_text("Generate Chat response", timeout=10_000)
+        expect(page.locator("#modelSlotDetails")).to_contain_text("Chat response")
+        page.locator("#modelSlotActions button").click()
+        expect(page.locator("#runtimeStop")).to_be_disabled(timeout=10_000)
+        page.locator("button[data-label='Chat']").click()
 
         page.reload()
         page.wait_for_load_state("networkidle")
         expect(page.locator(".conversation-panel article").filter(has_text="Agents-A1 mock response")).to_be_visible(timeout=10_000)
         assert_no_horizontal_overflow(page)
+
+        page.evaluate("""() => localStorage.setItem('hephaestus-chat-state-v1', JSON.stringify({
+          chatSessions: [
+            {id: 'first', title: 'First', folderId: null, modelMode: 'auto', reasoningEnabled: false, updatedAt: 1, messages: []},
+            {id: 'second', title: 'Second', folderId: null, modelMode: 'auto', reasoningEnabled: false, updatedAt: 2, messages: []}
+          ],
+          chatFolders: [],
+          activeSessionId: 'second',
+          expandedChatFolderId: null,
+          selectedModelMode: 'auto',
+          reasoningEnabled: false
+        }))""")
+        page.reload()
+        page.wait_for_load_state("networkidle")
+        page.locator(".conversation-panel form.composer textarea").fill("move me")
+        page.locator(".conversation-panel .composer-send").click()
+        expect(page.locator("#sessionList .session-title").first).to_have_value("move me", timeout=10_000)
         context.close()
 
         mobile = browser.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark")
