@@ -1,11 +1,13 @@
 {
   "name": "Hephaestus",
   "short_name": "Hephaestus",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f0e7",
   "theme_color": "#bd5a3b",
+  "categories": ["productivity", "utilities", "developer"],
   "icons": [
     {
       "src": "/assets/hephaestus-icon.svg",
