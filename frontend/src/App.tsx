@@ -99,7 +99,15 @@ export default function App() {
       <div className="body-shell">
         <Sidebar view={view} collapsed={collapsed} onSelect={selectView} />
         <main className="main-surface" id="main" tabIndex={-1} aria-label="ワークスペース">
-          {view === 'dashboard' && <DashboardView runtime={runtime.runtime} sessions={chat.sessions} />}
+          {view === 'dashboard' && (
+            <DashboardView
+              runtime={runtime.runtime}
+              sessions={chat.sessions}
+              activeSession={chat.activeSession}
+              chatStreaming={chat.streaming}
+              onStopChat={() => void stopGeneration()}
+            />
+          )}
           {view === 'chat' && (
             <ChatView
               sessions={chat.sessions}

@@ -5,6 +5,9 @@ import { Icon } from './Icon';
 interface DashboardViewProps {
   runtime: RuntimeInfo;
   sessions: ChatSession[];
+  activeSession?: ChatSession;
+  chatStreaming: boolean;
+  onStopChat: () => void;
 }
 
 interface QueueTask {
@@ -16,7 +19,7 @@ interface QueueTask {
   state: string;
 }
 
-export function DashboardView({ runtime, sessions }: DashboardViewProps) {
+export function DashboardView({ runtime, sessions, activeSession, chatStreaming, onStopChat }: DashboardViewProps) {
   const activeLabel = runtime.starting_model_label ?? runtime.active_model_label ?? 'None';
   const [queue, setQueue] = useState<QueueTask[]>([
     { id: 'task-notebook-answer', title: 'Notebook source answer', meta: 'Local Model Research', owner: 'Notebook', state: 'waiting' },
@@ -25,6 +28,16 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
   ]);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const running = queue.find((task) => task.state === 'running');
+  const streamingMessage = [...(activeSession?.messages ?? [])].reverse().find((message) => message.role === 'assistant' && message.streaming);
+  const chatTask: QueueTask | null = chatStreaming ? {
+    id: 'task-chat-stream',
+    title: 'Generate Chat response',
+    meta: `${streamingMessage?.metadata?.selectedModelLabel ?? 'Hephaestus'} / ${streamingMessage?.metadata?.taskKind ?? 'chat'}`,
+    owner: 'Chat',
+    elapsed: 'Running',
+    state: 'running',
+  } : null;
+  const activeTask = chatTask ?? running;
   const waiting = queue.filter((task) => task.state === 'waiting');
   const stopped = queue.filter((task) => task.state === 'stopped');
   const updateTask = (id: string, state: string) => setQueue((current) => current.map((task) => {
@@ -72,20 +85,21 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
         <article className="surface-card system-panel model-slot-card model-state-panel">
           <div className="page-heading queue-panel-heading">
             <h2>Model Slot</h2>
-            <span className={`state-badge status-pill state-${runtime.state}${running ? ' is-busy' : ''}`} id="modelSlotStatus">{running ? 'busy' : runtime.state}</span>
+            <span className={`state-badge status-pill state-${runtime.state}${activeTask ? ' is-busy' : ''}`} id="modelSlotStatus">{activeTask ? 'busy' : runtime.state}</span>
           </div>
           <div className="inventory-list" id="modelSlotDetails">
             <div><strong>Resident model</strong><span>{activeLabel}</span></div>
             <div><strong>Provider</strong><span>{runtime.provider ?? 'auto'}</span></div>
             <div><strong>Acceleration</strong><span>{runtime.acceleration ?? 'Not running'}</span></div>
             <div><strong>Context</strong><span>{runtime.ctx_size ?? '8192'} / batch {runtime.batch_size ?? '512'}</span></div>
-            <div><strong>Active task</strong><span>{running?.title ?? 'No running task'}</span></div>
-            <div><strong>Owner</strong><span>{running?.owner ?? 'Queue waiting'}</span></div>
-            <div><strong>Elapsed</strong><span>{running?.elapsed ?? '--:--'}</span></div>
+            <div><strong>Active task</strong><span>{activeTask?.title ?? 'No running task'}</span></div>
+            <div><strong>Owner</strong><span>{activeTask?.owner ?? 'Queue waiting'}</span></div>
+            <div><strong>Elapsed</strong><span>{activeTask?.elapsed ?? '--:--'}</span></div>
             <div><strong>Policy</strong><span>{runtime.mock ? 'Mock stream, single resident model' : 'Single resident model, queued execution'}</span></div>
           </div>
           <div className="model-slot-actions" id="modelSlotActions">
-            {running && <button className="primary-button" type="button" onClick={() => updateTask(running.id, 'stopped')}>Stop task</button>}
+            {chatTask && <button className="primary-button" type="button" onClick={onStopChat}>生成を停止</button>}
+            {!chatTask && running && <button className="primary-button" type="button" onClick={() => updateTask(running.id, 'stopped')}>Stop task</button>}
           </div>
         </article>
         <article className="surface-card system-panel queue-card task-queue-panel">
@@ -94,8 +108,9 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
             <span className="state-badge queue-count" id="queueCount">{waiting.length} waiting / {stopped.length} stopped</span>
           </div>
           <ol className="task-queue" id="taskQueueList">
-            {running && <QueueItem task={running} label="Now" onStart={() => updateTask(running.id, 'running')} onStop={() => updateTask(running.id, 'stopped')} onDelete={() => removeTask(running.id)} onRequeue={() => requeueTask(running.id)} />}
-            {!running && <li className="task-queue-item task-queue-empty is-placeholder"><span className="queue-drag-spacer" /><span className="queue-rank">Now</span><div><strong>No running task</strong><small>Model slot is idle</small></div></li>}
+            {chatTask && <QueueItem task={chatTask} label="Now" onStop={onStopChat} />}
+            {!chatTask && running && <QueueItem task={running} label="Now" onStop={() => updateTask(running.id, 'stopped')} />}
+            {!chatTask && !running && <li className="task-queue-item task-queue-empty is-placeholder"><span className="queue-drag-spacer" /><span className="queue-rank">Now</span><div><strong>No running task</strong><small>Model slot is idle</small></div></li>}
             {waiting.map((task, index) => (
               <QueueItem
                 key={task.id}
@@ -106,9 +121,7 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
                 onDragOver={(after) => moveWaitingTask(task.id, after)}
                 onDragEnd={() => setDraggedTaskId(null)}
                 onStart={() => updateTask(task.id, 'running')}
-                onStop={() => updateTask(task.id, 'stopped')}
                 onDelete={() => removeTask(task.id)}
-                onRequeue={() => requeueTask(task.id)}
               />
             ))}
             {waiting.length > 0 && (
@@ -126,7 +139,7 @@ export function DashboardView({ runtime, sessions }: DashboardViewProps) {
                 Drop at end
               </li>
             )}
-            {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onStop={() => updateTask(task.id, 'stopped')} onDelete={() => removeTask(task.id)} onRequeue={() => requeueTask(task.id)} />)}
+            {stopped.map((task) => <QueueItem key={task.id} task={task} label="Stop" onStart={() => updateTask(task.id, 'running')} onDelete={() => removeTask(task.id)} onRequeue={() => requeueTask(task.id)} />)}
           </ol>
         </article>
       </div>
@@ -162,10 +175,10 @@ function QueueItem(props: {
   onDragStart?: () => void;
   onDragOver?: (after: boolean) => void;
   onDragEnd?: () => void;
-  onStart: () => void;
-  onStop: () => void;
-  onDelete: () => void;
-  onRequeue: () => void;
+  onStart?: () => void;
+  onStop?: () => void;
+  onDelete?: () => void;
+  onRequeue?: () => void;
 }) {
   return (
     <li
@@ -191,10 +204,10 @@ function QueueItem(props: {
       <span className="queue-rank">{props.label}</span>
       <div><strong>{props.task.title}</strong><small>{props.task.meta} / {props.task.state}{props.task.elapsed ? ` / ${props.task.elapsed}` : ''}</small></div>
       <div className="queue-actions">
-        {props.task.state === 'running' && <button type="button" onClick={props.onStop} aria-label="Stop task"><Icon name="stop" /></button>}
+        {props.task.state === 'running' && props.onStop && <button type="button" onClick={props.onStop} aria-label="Stop task"><Icon name="stop" /></button>}
         {props.task.state === 'waiting' && <button type="button" onClick={props.onStart} aria-label="Start task"><Icon name="play" /></button>}
-        {props.task.state === 'stopped' && <button type="button" onClick={props.onRequeue} aria-label="Requeue task"><Icon name="requeue" /></button>}
-        <button type="button" onClick={props.onDelete} aria-label="Delete task"><Icon name="trash" /></button>
+        {props.task.state === 'stopped' && props.onRequeue && <button type="button" onClick={props.onRequeue} aria-label="Requeue task"><Icon name="requeue" /></button>}
+        {props.onDelete && <button type="button" onClick={props.onDelete} aria-label="Delete task"><Icon name="trash" /></button>}
       </div>
     </li>
   );

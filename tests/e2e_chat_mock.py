@@ -42,8 +42,12 @@ def main() -> None:
         page.locator("#modelRouteSelector button[data-model='ornith']").click()
         page.locator(".conversation-panel form.composer textarea").fill("token " * 80)
         page.locator(".conversation-panel .composer-send").click()
-        page.locator("#runtimeStop").click()
+        page.locator("button[data-label='Dashboard']").click()
+        expect(page.locator("#taskQueueList")).to_contain_text("Generate Chat response", timeout=10_000)
+        expect(page.locator("#modelSlotDetails")).to_contain_text("Chat response")
+        page.locator("#modelSlotActions button").click()
         expect(page.locator("#runtimeStop")).to_be_disabled(timeout=10_000)
+        page.locator("button[data-label='Chat']").click()
 
         page.reload()
         page.wait_for_load_state("networkidle")
