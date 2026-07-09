@@ -9,6 +9,13 @@
     <meta name="msapplication-TileColor" content="#bd5a3b" />
     <meta name="msapplication-TileImage" content="/assets/hephaestus-icon.png" />
     <title>Hephaestus</title>
+    <script>
+      (() => {
+        const saved = localStorage.getItem("hephaestus-theme");
+        const theme = saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <link rel="icon" href="/assets/hephaestus-icon.svg" />
     <link rel="icon" type="image/png" sizes="1254x1254" href="/assets/hephaestus-icon.png" />
     <link rel="shortcut icon" href="/assets/hephaestus-icon.svg" />

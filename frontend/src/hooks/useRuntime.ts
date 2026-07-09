@@ -3,9 +3,50 @@ import { api } from '../api';
 import type { ModelMode, RuntimeInfo } from '../types';
 
 const initialRuntime: RuntimeInfo = { state: 'checking' };
+const CHAT_STATE_KEY = 'hephaestus-chat-state-v1';
+
+function loadSavedRuntime(): RuntimeInfo {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHAT_STATE_KEY) ?? '{}') as { runtimeInfo?: Partial<RuntimeInfo> };
+    return saved.runtimeInfo && typeof saved.runtimeInfo === 'object'
+      ? { ...initialRuntime, ...saved.runtimeInfo, state: 'checking' }
+      : initialRuntime;
+  } catch {
+    return initialRuntime;
+  }
+}
+
+function persistRuntime(runtime: RuntimeInfo) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CHAT_STATE_KEY) ?? '{}') as Record<string, unknown>;
+    saved.runtimeInfo = {
+      state: runtime.state,
+      active_model_id: runtime.active_model_id,
+      active_model_label: runtime.active_model_label,
+      starting_model_id: runtime.starting_model_id,
+      starting_model_label: runtime.starting_model_label,
+      provider: runtime.provider,
+      mock: runtime.mock,
+      cuda_build: runtime.cuda_build,
+      acceleration: runtime.acceleration,
+      ctx_size: runtime.ctx_size,
+      batch_size: runtime.batch_size,
+      ubatch_size: runtime.ubatch_size,
+      reasoning: runtime.reasoning,
+      show_reasoning: runtime.show_reasoning,
+      prepared: runtime.prepared,
+      last_error: runtime.last_error,
+    };
+    localStorage.setItem(CHAT_STATE_KEY, JSON.stringify(saved));
+  } catch {
+    // localStorage can be unavailable in private or quota-limited contexts.
+  }
+}
 
 export function useRuntime(enabled: boolean) {
-  const [runtime, setRuntime] = useState<RuntimeInfo>(initialRuntime);
+  const [runtime, setRuntime] = useState<RuntimeInfo>(loadSavedRuntime);
+
+  useEffect(() => persistRuntime(runtime), [runtime]);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;

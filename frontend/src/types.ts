@@ -28,9 +28,12 @@ export interface RuntimeInfo {
   starting_model_id?: string | null;
   starting_model_label?: string | null;
   acceleration?: string | null;
+  cuda_build?: boolean | null;
   ctx_size?: string | number;
   batch_size?: string | number;
+  ubatch_size?: string | number;
   reasoning?: string;
+  show_reasoning?: boolean;
   prepared?: Record<string, boolean>;
   last_error?: string | null;
   logs?: string[];

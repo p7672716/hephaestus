@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from '../api';
-import type { ChatFolder, ChatMessage, ChatSession, MessageMetadata, ModelMode, StreamEventData, UserSettings } from '../types';
+import type { ChatFolder, ChatMessage, ChatSession, MessageMetadata, ModelMode, RuntimeInfo, StreamEventData, UserSettings } from '../types';
 
 const STORAGE_KEY = 'hephaestus-chat-state-v1';
 const REACT_STORAGE_KEY = 'hephaestus-react-chat-v1';
@@ -37,6 +37,7 @@ type StoredChatState = Partial<ChatStore> & {
   expandedChatFolderId?: string | null;
   selectedModelMode?: ModelMode;
   reasoningEnabled?: boolean;
+  runtimeInfo?: Partial<RuntimeInfo>;
 };
 
 function modelMode(value: unknown): ModelMode | undefined {
@@ -157,6 +158,13 @@ export function useChat(settings?: UserSettings) {
   const activeSession = sessions.find((session) => session.id === activeId) ?? sessions[0];
 
   useEffect(() => {
+    let runtimeInfo: Partial<RuntimeInfo> | undefined;
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as StoredChatState;
+      if (saved.runtimeInfo && typeof saved.runtimeInfo === 'object') runtimeInfo = saved.runtimeInfo;
+    } catch {
+      runtimeInfo = undefined;
+    }
     const selectedModelMode = activeSession?.modelMode ?? settings?.defaultModelMode ?? 'auto';
     const reasoningEnabled = activeSession?.reasoningEnabled ?? settings?.defaultReasoningEnabled ?? false;
     const chatSessions = sessions.map((session) => ({
@@ -179,6 +187,7 @@ export function useChat(settings?: UserSettings) {
       expandedChatFolderId: expandedFolderId,
       selectedModelMode,
       reasoningEnabled,
+      runtimeInfo,
     }));
   }, [activeId, activeSession?.modelMode, activeSession?.reasoningEnabled, expandedFolderId, folders, sessions, settings?.defaultModelMode, settings?.defaultReasoningEnabled]);
 

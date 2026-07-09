@@ -6,6 +6,7 @@ interface RuntimeBarProps {
   generating: boolean;
   reasoningEnabled: boolean;
   dark: boolean;
+  sidebarCollapsed: boolean;
   onToggleTheme: () => void;
   onToggleSidebar: () => void;
   onStop: () => void;
@@ -31,7 +32,17 @@ export function RuntimeBar(props: RuntimeBarProps) {
 
   return (
     <header className="topbar">
-      <button className="icon-button sidebar-toggle" id="sidebarToggle" type="button" onClick={props.onToggleSidebar} aria-label="Toggle sidebar"><Icon name="menu" /></button>
+      <button
+        className="icon-button sidebar-toggle"
+        id="sidebarToggle"
+        type="button"
+        onClick={props.onToggleSidebar}
+        aria-label={props.sidebarCollapsed ? 'サイドバーを展開する' : 'サイドバーを折りたたむ'}
+        aria-expanded={!props.sidebarCollapsed}
+        aria-controls="sidebar"
+      >
+        <Icon name="menu" />
+      </button>
       <div className="brand"><img className="brand-icon" src="/assets/hephaestus-icon.svg" width="40" height="40" alt="" /><strong className="brand-name">Hephaestus</strong></div>
       <div className="runtime-pill topbar-runtime topbar-actions" title={props.runtime.last_error ?? undefined}>
         <span className={`status-dot state-${props.runtime.state}`} />

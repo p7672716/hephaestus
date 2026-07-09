@@ -15,6 +15,11 @@ import type { ViewId } from './types';
 const THEME_KEY = 'hephaestus-theme';
 const viewIds: ViewId[] = ['dashboard', 'chat', 'coding', 'notebook', 'skill', 'tool', 'automation', 'knowledge', 'setting'];
 
+function initialDarkTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  return saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 function viewFromHash(): ViewId {
   const candidate = window.location.hash.slice(1);
   if (candidate === 'index') return 'knowledge';
@@ -24,7 +29,7 @@ function viewFromHash(): ViewId {
 export default function App() {
   const [view, setView] = useState<ViewId>(viewFromHash);
   const [collapsed, setCollapsed] = useState(false);
-  const [dark, setDark] = useState(() => localStorage.getItem(THEME_KEY) === 'dark');
+  const [dark, setDark] = useState(initialDarkTheme);
   const auth = useAuth();
   const authenticated = Boolean(auth.status && (!auth.status.required || auth.status.authenticated));
   const runtime = useRuntime(authenticated);
@@ -34,6 +39,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#1c1b19' : '#f5f0e7');
   }, [dark]);
 
   useEffect(() => {
@@ -84,6 +90,7 @@ export default function App() {
         generating={chat.streaming}
         reasoningEnabled={chat.activeSession?.reasoningEnabled ?? settings.settings.defaultReasoningEnabled}
         dark={dark}
+        sidebarCollapsed={collapsed}
         onToggleTheme={() => setDark((value) => !value)}
         onToggleSidebar={() => setCollapsed((value) => !value)}
         onStop={chat.streaming ? stopGeneration : () => void runtime.stop()}
