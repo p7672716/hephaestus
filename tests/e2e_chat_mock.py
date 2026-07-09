@@ -49,6 +49,23 @@ def main() -> None:
         page.wait_for_load_state("networkidle")
         expect(page.locator(".conversation-panel article").filter(has_text="Agents-A1 mock response")).to_be_visible(timeout=10_000)
         assert_no_horizontal_overflow(page)
+
+        page.evaluate("""() => localStorage.setItem('hephaestus-chat-state-v1', JSON.stringify({
+          chatSessions: [
+            {id: 'first', title: 'First', folderId: null, modelMode: 'auto', reasoningEnabled: false, updatedAt: 1, messages: []},
+            {id: 'second', title: 'Second', folderId: null, modelMode: 'auto', reasoningEnabled: false, updatedAt: 2, messages: []}
+          ],
+          chatFolders: [],
+          activeSessionId: 'second',
+          expandedChatFolderId: null,
+          selectedModelMode: 'auto',
+          reasoningEnabled: false
+        }))""")
+        page.reload()
+        page.wait_for_load_state("networkidle")
+        page.locator(".conversation-panel form.composer textarea").fill("move me")
+        page.locator(".conversation-panel .composer-send").click()
+        expect(page.locator("#sessionList .session-title").first).to_have_value("move me", timeout=10_000)
         context.close()
 
         mobile = browser.new_context(viewport={"width": 390, "height": 844}, color_scheme="dark")

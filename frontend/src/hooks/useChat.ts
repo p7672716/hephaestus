@@ -142,6 +142,22 @@ function updateMessage(
   );
 }
 
+function touchSessionList(sessions: ChatSession[], sessionId: string, patch: Partial<ChatSession> = {}): ChatSession[] {
+  const index = sessions.findIndex((session) => session.id === sessionId);
+  if (index < 0) return sessions;
+  const next = [...sessions];
+  const [session] = next.splice(index, 1);
+  return [{ ...session, ...patch, updatedAt: Date.now() }, ...next];
+}
+
+function touchFolderList(folders: ChatFolder[], folderId: string): ChatFolder[] {
+  const index = folders.findIndex((folder) => folder.id === folderId);
+  if (index < 0) return folders;
+  const next = [...folders];
+  const [folder] = next.splice(index, 1);
+  return [{ ...folder, updatedAt: Date.now() }, ...next];
+}
+
 export function useChat(settings?: UserSettings) {
   const initial = useRef<ChatStore | null>(null);
   if (!initial.current) initial.current = loadStore(settings);
@@ -206,10 +222,19 @@ export function useChat(settings?: UserSettings) {
   const deleteSession = useCallback((sessionId: string) => {
     setSessions((current) => {
       const next = current.filter((session) => session.id !== sessionId);
-      return next.length ? next : [createSession(settings)];
+      if (!next.length) {
+        const replacement = createSession(settings);
+        setActiveId(replacement.id);
+        return [replacement];
+      }
+      if (activeId === sessionId) {
+        const index = current.findIndex((session) => session.id === sessionId);
+        const fallback = next[index] ?? next[index - 1] ?? next[0];
+        setActiveId(fallback.id);
+      }
+      return next;
     });
-    setActiveId((current) => (current === sessionId ? '' : current));
-  }, [settings]);
+  }, [activeId, settings]);
 
   const deleteFolder = useCallback((folderId: string) => {
     setFolders((current) => current.filter((folder) => folder.id !== folderId));
@@ -222,9 +247,7 @@ export function useChat(settings?: UserSettings) {
   const renameSession = useCallback((sessionId: string, title: string) => {
     const next = title.trim();
     if (!next) return;
-    setSessions((current) => current.map((session) => (
-      session.id === sessionId ? { ...session, title: next, updatedAt: Date.now() } : session
-    )));
+    setSessions((current) => touchSessionList(current, sessionId, { title: next }));
   }, []);
 
   const renameFolder = useCallback((folderId: string, title: string) => {
@@ -236,10 +259,11 @@ export function useChat(settings?: UserSettings) {
   }, []);
 
   const assignSessionFolder = useCallback((sessionId: string, folderId: string | null) => {
-    setSessions((current) => current.map((session) => (
-      session.id === sessionId ? { ...session, folderId, updatedAt: Date.now() } : session
-    )));
-    if (folderId) setExpandedFolderId(folderId);
+    setSessions((current) => touchSessionList(current, sessionId, { folderId }));
+    if (folderId) {
+      setFolders((current) => touchFolderList(current, folderId));
+      setExpandedFolderId(folderId);
+    }
   }, []);
 
   useEffect(() => {
@@ -262,13 +286,13 @@ export function useChat(settings?: UserSettings) {
     const next = text.trim();
     if (!next) return;
     setSessions((current) =>
-      updateMessage(current, sessionId, messageId, (message) => {
+      touchSessionList(updateMessage(current, sessionId, messageId, (message) => {
         const versions = message.versions?.length ? [...message.versions] : [message.content];
         const versionTimes = message.versionTimes?.length ? [...message.versionTimes] : [message.createdAt];
         versions.push(next);
         versionTimes.push(Date.now());
         return { ...message, content: next, versions, versionTimes, versionIndex: versions.length - 1 };
-      }),
+      }), sessionId),
     );
   }, []);
 
@@ -325,16 +349,10 @@ export function useChat(settings?: UserSettings) {
     };
     const nextMessages = [...session.messages, userMessage, assistantMessage];
     setSessions((current) =>
-      current.map((item) =>
-        item.id === session.id
-          ? {
-            ...item,
-              title: item.messages.length ? item.title : text.trim().slice(0, 36),
-              updatedAt: Date.now(),
-              messages: nextMessages,
-            }
-          : item,
-      ),
+      touchSessionList(current, session.id, {
+        title: session.messages.length ? session.title : text.trim().slice(0, 36),
+        messages: nextMessages,
+      }),
     );
 
     const controller = new AbortController();
