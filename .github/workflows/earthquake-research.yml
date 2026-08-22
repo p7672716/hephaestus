@@ -6,6 +6,11 @@ on:
     paths:
       - 'earthquake_lab/**'
       - '.github/workflows/earthquake-research.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'earthquake_lab/**'
+      - '.github/workflows/earthquake-research.yml'
   workflow_dispatch:
 
 permissions:
