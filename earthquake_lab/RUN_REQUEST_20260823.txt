@@ -1,0 +1,1 @@
+Run the isolated earthquake forecasting benchmark on public USGS and JMA catalogs.
