@@ -1,0 +1,66 @@
+name: Earthquake research training
+
+on:
+  push:
+    branches: [research/earthquake-lab-20260823]
+    paths:
+      - 'earthquake_lab/**'
+      - '.github/workflows/earthquake-research.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'earthquake_lab/**'
+      - '.github/workflows/earthquake-research.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: usgs
+            start: '2016-01-01'
+            end: '2026-01-01'
+            minmag: '2.5'
+          - source: jma
+            start: '2017-01-01'
+            end: '2024-01-01'
+            minmag: '2.0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: earthquake_lab/requirements.txt
+      - name: Install dependencies
+        run: pip install -r earthquake_lab/requirements.txt
+      - name: Restore catalog cache
+        uses: actions/cache@v4
+        with:
+          path: earthquake_lab/cache
+          key: eqcat-${{ matrix.source }}-${{ matrix.start }}-${{ matrix.end }}-${{ matrix.minmag }}-v2
+      - name: Train and evaluate
+        run: >-
+          python earthquake_lab/train_forecaster.py
+          --source ${{ matrix.source }}
+          --start ${{ matrix.start }}
+          --end ${{ matrix.end }}
+          --min-mag ${{ matrix.minmag }}
+          --target-mag 4.0
+          --grid 1.5
+          --cache earthquake_lab/cache
+          --out earthquake_lab/output/${{ matrix.source }}
+      - name: Upload model and evaluation
+        uses: actions/upload-artifact@v4
+        with:
+          name: earthquake-model-${{ matrix.source }}
+          path: earthquake_lab/output/${{ matrix.source }}/
+          if-no-files-found: error
+          retention-days: 30
